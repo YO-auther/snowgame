@@ -60,7 +60,7 @@ const startButton = {
 class Snow {
   constructor(type) {
     this.type = type;
-    this.size = 80;
+    this.size = 80; // размер снежинок
     this.x = Math.random() * (canvas.width - this.size);
     this.y = -50;
     this.speed = 2 + Math.random() * 3;
@@ -126,11 +126,8 @@ function endGame() {
   gameState = "menu";
 }
 
-/* ===== КЛИК ===== */
-canvas.addEventListener("click", e => {
-  const mx = e.clientX;
-  const my = e.clientY;
-
+/* ===== ОБРАБОТКА КЛИКОВ И ТАПОВ ===== */
+function handleClick(mx, my) {
   if (!musicStarted) {
     menuMusic.play().catch(()=>{});
     musicStarted = true;
@@ -162,7 +159,17 @@ canvas.addEventListener("click", e => {
   });
 
   if (lives <= 0) endGame();
+}
+
+canvas.addEventListener("click", e => {
+  handleClick(e.clientX, e.clientY);
 });
+
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault(); // предотвращает прокрутку
+  const touch = e.touches[0];
+  handleClick(touch.clientX, touch.clientY);
+}, { passive: false });
 
 /* ===== ЦИКЛ ===== */
 function gameLoop() {
