@@ -15,7 +15,6 @@ let musicStarted = false;
 const GAME_TIME = 60;
 let timeLeft = GAME_TIME;
 let timer = 0;
-
 let bestScore = localStorage.getItem("bestScore") || 0;
 
 /* ===== ЗАГРУЗКА КАРТИНОК ===== */
@@ -37,10 +36,7 @@ imageNames.forEach(name => {
   img.src = name + ".png";
   img.onload = () => {
     loaded++;
-    if (loaded === imageNames.length) {
-      menuMusic.play().catch(()=>{});
-      requestAnimationFrame(gameLoop);
-    }
+    console.log(`Загружено ${loaded}/${imageNames.length}: ${name}`);
   };
   images[name] = img;
 });
@@ -214,3 +210,6 @@ function gameLoop() {
 
   requestAnimationFrame(gameLoop);
 }
+
+/* ===== ЗАПУСК ЦИКЛА ===== */
+requestAnimationFrame(gameLoop);
