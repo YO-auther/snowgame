@@ -60,7 +60,7 @@ const startButton = {
 class Snow {
   constructor(type) {
     this.type = type;
-    this.size = 80; // размер снежинок
+    this.size = 100 + Math.random() * 50; // 100–150px для удобного тапания
     this.x = Math.random() * (canvas.width - this.size);
     this.y = -50;
     this.speed = 2 + Math.random() * 3;
@@ -126,7 +126,23 @@ function endGame() {
   gameState = "menu";
 }
 
+/* ===== ПОЛУЧЕНИЕ КОРРЕКТНЫХ КООРДИНАТ ===== */
+function getPointerPos(evt) {
+  const rect = canvas.getBoundingClientRect();
+  let x, y;
+  if (evt.touches) { // мобильный
+    x = evt.touches[0].clientX - rect.left;
+    y = evt.touches[0].clientY - rect.top;
+  } else { // ПК
+    x = evt.clientX - rect.left;
+    y = evt.clientY - rect.top;
+  }
+  return { x, y };
+}
+
 /* ===== ОБРАБОТКА КЛИКОВ И ТАПОВ ===== */
+const HITBOX = 120; // зона попадания для пальца
+
 function handleClick(mx, my) {
   if (!musicStarted) {
     menuMusic.play().catch(()=>{});
@@ -147,8 +163,10 @@ function handleClick(mx, my) {
 
   snowflakes.forEach((s, i) => {
     if (
-      mx > s.x && mx < s.x + s.size &&
-      my > s.y && my < s.y + s.size
+      mx > s.x - HITBOX/2 &&
+      mx < s.x + s.size + HITBOX/2 &&
+      my > s.y - HITBOX/2 &&
+      my < s.y + s.size + HITBOX/2
     ) {
       effects.push(new Effect(mx, my));
       if (s.type === "snow") score++;
@@ -162,13 +180,14 @@ function handleClick(mx, my) {
 }
 
 canvas.addEventListener("click", e => {
-  handleClick(e.clientX, e.clientY);
+  const pos = getPointerPos(e);
+  handleClick(pos.x, pos.y);
 });
 
 canvas.addEventListener("touchstart", e => {
-  e.preventDefault(); // предотвращает прокрутку
-  const touch = e.touches[0];
-  handleClick(touch.clientX, touch.clientY);
+  e.preventDefault();
+  const pos = getPointerPos(e);
+  handleClick(pos.x, pos.y);
 }, { passive: false });
 
 /* ===== ЦИКЛ ===== */
