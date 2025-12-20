@@ -179,7 +179,7 @@ function gameLoop() {
   if (gameState === "menu") {
     ctx.drawImage(images.background_menu, 0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = "white";
+    ctx.fillStyle = "#00bfff";
     ctx.font = "32px Arial";
     ctx.fillText("Рекорд: " + bestScore, 20, 50);
 
@@ -221,4 +221,5 @@ function gameLoop() {
 
 /* ===== ЗАПУСК ЦИКЛА ===== */
 requestAnimationFrame(gameLoop);
+
 
