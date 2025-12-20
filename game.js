@@ -50,8 +50,8 @@ let effects = [];
 
 /* ===== КНОПКА ===== */
 const startButton = {
-  width: 300,
-  height: 120,
+  width: 400,
+  height: 200,
   get x() { return canvas.width / 2 - this.width / 2; },
   get y() { return canvas.height / 2 + 100; }
 };
@@ -209,7 +209,7 @@ function gameLoop() {
       if (e.life <= 0) effects.splice(i, 1);
     });
 
-    ctx.fillStyle = "white";
+    ctx.fillStyle = "#00bfff";
     ctx.font = "24px Arial";
     ctx.fillText("Очки: " + score, 20, 40);
     ctx.fillText("Жизни: " + lives, 20, 70);
@@ -221,3 +221,4 @@ function gameLoop() {
 
 /* ===== ЗАПУСК ЦИКЛА ===== */
 requestAnimationFrame(gameLoop);
+
