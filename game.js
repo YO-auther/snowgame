@@ -60,10 +60,10 @@ const startButton = {
 class Snow {
   constructor(type) {
     this.type = type;
-    this.size = 100 + Math.random() * 50; // 100–150px для удобного тапания
+    this.size = 120 + Math.random() * 30; // крупнее для пальцев
     this.x = Math.random() * (canvas.width - this.size);
     this.y = -50;
-    this.speed = 2 + Math.random() * 3;
+    this.speed = 1 + Math.random() * 2; // медленнее падение
   }
   update() { this.y += this.speed; }
   draw() {
@@ -126,24 +126,10 @@ function endGame() {
   gameState = "menu";
 }
 
-/* ===== ПОЛУЧЕНИЕ КОРРЕКТНЫХ КООРДИНАТ ===== */
-function getPointerPos(evt) {
-  const rect = canvas.getBoundingClientRect();
-  let x, y;
-  if (evt.touches) { // мобильный
-    x = evt.touches[0].clientX - rect.left;
-    y = evt.touches[0].clientY - rect.top;
-  } else { // ПК
-    x = evt.clientX - rect.left;
-    y = evt.clientY - rect.top;
-  }
-  return { x, y };
-}
+/* ===== ОБРАБОТКА НАЖАТИЙ (ПК + Мобильные) ===== */
+const HITBOX = 150; // зона попадания
 
-/* ===== ОБРАБОТКА КЛИКОВ И ТАПОВ ===== */
-const HITBOX = 120; // зона попадания для пальца
-
-function handleClick(mx, my) {
+function handlePointer(mx, my) {
   if (!musicStarted) {
     menuMusic.play().catch(()=>{});
     musicStarted = true;
@@ -162,12 +148,11 @@ function handleClick(mx, my) {
   }
 
   snowflakes.forEach((s, i) => {
-    if (
-      mx > s.x - HITBOX/2 &&
-      mx < s.x + s.size + HITBOX/2 &&
-      my > s.y - HITBOX/2 &&
-      my < s.y + s.size + HITBOX/2
-    ) {
+    const centerX = s.x + s.size / 2;
+    const centerY = s.y + s.size / 2;
+    const dx = mx - centerX;
+    const dy = my - centerY;
+    if (Math.sqrt(dx*dx + dy*dy) < HITBOX) {
       effects.push(new Effect(mx, my));
       if (s.type === "snow") score++;
       if (s.type === "gold_snow") score += 5;
@@ -179,16 +164,13 @@ function handleClick(mx, my) {
   if (lives <= 0) endGame();
 }
 
-canvas.addEventListener("click", e => {
-  const pos = getPointerPos(e);
-  handleClick(pos.x, pos.y);
+// pointerdown работает на ПК, телефоне, планшете
+canvas.addEventListener("pointerdown", e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  handlePointer(mx, my);
 });
-
-canvas.addEventListener("touchstart", e => {
-  e.preventDefault();
-  const pos = getPointerPos(e);
-  handleClick(pos.x, pos.y);
-}, { passive: false });
 
 /* ===== ЦИКЛ ===== */
 function gameLoop() {
