@@ -1,3 +1,46 @@
+/* ===== МУЗЫКА ===== */
+const menuMusic = new Audio("menu.mp3");
+const game1Music = new Audio("game.mp3");
+const game2Music = new Audio("game.mp3"); // если для второй игры другая, можно заменить
+
+menuMusic.loop = true;
+game1Music.loop = true;
+game2Music.loop = true;
+
+let musicStarted = false;
+let currentMusic = null;
+function playMusic(music) {
+  if (currentMusic === music) return;
+  if (currentMusic) currentMusic.pause();
+  currentMusic = music;
+  currentMusic.currentTime = 0;
+  currentMusic.play().catch(()=>{}); // чтобы не было ошибок, если браузер блокирует autoplay
+}
+canvas.addEventListener("pointerdown", e => {
+  if (!musicStarted) {
+    musicStarted = true;
+    // музыка автоматически запустится через playMusic в loop
+  }
+
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left;
+  const my = e.clientY - r.top;
+
+  // кнопки меню
+  if (globalState === "menu") {
+    if (mx > btnGame1.x && mx < btnGame1.x + btnGame1.w &&
+        my > btnGame1.y && my < btnGame1.y + btnGame1.h) {
+      globalState = "game1";
+    }
+    if (mx > btnGame2.x && mx < btnGame2.x + btnGame2.w &&
+        my > btnGame2.y && my < btnGame2.y + btnGame2.h) {
+      initGame2();
+      globalState = "game2";
+    }
+  }
+});
+
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -125,6 +168,21 @@ canvas.addEventListener("pointerdown", e => {
 /* ============ LOOP ============ */
 function loop() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  // В меню
+if (globalState === "menu") {
+  playMusic(menuMusic);
+}
+
+// В игре 1
+if (globalState === "game1") {
+  playMusic(game1Music);
+}
+
+// В игре 2
+if (globalState === "game2") {
+  playMusic(game2Music);
+}
+
 
   if (loaded < imageNames.length) {
     ctx.fillStyle = "white";
@@ -180,4 +238,5 @@ function loop() {
 }
 
 requestAnimationFrame(loop);
+
 
