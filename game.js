@@ -1,56 +1,32 @@
-/* ===== МУЗЫКА ===== */
-const menuMusic = new Audio("menu.mp3");
-const game1Music = new Audio("game.mp3");
-const game2Music = new Audio("game.mp3"); // если для второй игры другая, можно заменить
-
-menuMusic.loop = true;
-game1Music.loop = true;
-game2Music.loop = true;
-
-let musicStarted = false;
-let currentMusic = null;
-function playMusic(music) {
-  if (currentMusic === music) return;
-  if (currentMusic) currentMusic.pause();
-  currentMusic = music;
-  currentMusic.currentTime = 0;
-  currentMusic.play().catch(()=>{}); // чтобы не было ошибок, если браузер блокирует autoplay
-}
-canvas.addEventListener("pointerdown", e => {
-  if (!musicStarted) {
-    musicStarted = true;
-    // музыка автоматически запустится через playMusic в loop
-  }
-
-  const r = canvas.getBoundingClientRect();
-  const mx = e.clientX - r.left;
-  const my = e.clientY - r.top;
-
-  // кнопки меню
-  if (globalState === "menu") {
-    if (mx > btnGame1.x && mx < btnGame1.x + btnGame1.w &&
-        my > btnGame1.y && my < btnGame1.y + btnGame1.h) {
-      globalState = "game1";
-    }
-    if (mx > btnGame2.x && mx < btnGame2.x + btnGame2.w &&
-        my > btnGame2.y && my < btnGame2.y + btnGame2.h) {
-      initGame2();
-      globalState = "game2";
-    }
-  }
-});
-
-
+/* ===== CANVAS ===== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-/* ============ STATE ============ */
-let globalState = "menu";
+/* ===== STATE ===== */
+let globalState = "menu"; // "menu", "game1", "game2", "end"
+let musicStarted = false;
+let currentMusic = null;
 
-/* ============ IMAGES ============ */
+/* ===== MUSIC ===== */
+const menuMusic = new Audio("menu.mp3");
+const game1Music = new Audio("game.mp3");
+const game2Music = new Audio("game.mp3"); // можно заменить на другой трек
+menuMusic.loop = true;
+game1Music.loop = true;
+game2Music.loop = true;
+
+function playMusic(music) {
+  if (currentMusic === music) return;
+  if (currentMusic) currentMusic.pause();
+  currentMusic = music;
+  currentMusic.currentTime = 0;
+  currentMusic.play().catch(()=>{});
+}
+
+/* ===== IMAGES ===== */
 const images = {};
 const imageNames = [
   "background_menu",
@@ -83,21 +59,20 @@ imageNames.forEach(n => {
   images[n] = img;
 });
 
-/* ============ BUTTONS ============ */
+/* ===== BUTTONS ===== */
 const btnGame1 = {
   w: 300, h: 150,
   get x() { return canvas.width/2 - this.w - 40 },
   get y() { return canvas.height/2 - this.h/2 }
 };
-
 const btnGame2 = {
-  w: 300, h: 120,
+  w: 300, h: 150,
   get x() { return canvas.width/2 + 40 },
   get y() { return canvas.height/2 - this.h/2 }
 };
 
-/* ============ GAME 1 (SNOW) ============ */
-let score1 = 0, lives = 3;
+/* ===== GAME 1 (SNOW) ===== */
+let score1 = 0, lives1 = 3;
 let snowflakes = [];
 
 class Snow {
@@ -120,16 +95,16 @@ function spawnSnow() {
   snowflakes.push(new Snow(t));
 }
 
-/* ============ GAME 2 (DELIVERY) ============ */
-let player = { x:200, y:200, w:60, h:60, speed:4, dir:"stand", has:null };
+/* ===== GAME 2 (DELIVERY) ===== */
+const PLAYER_SIZE = 90;
+const PRESENT_SIZE = 80;
+const HOUSE_SIZE = 130;
+
+let player = { x:200, y:200, w:PLAYER_SIZE, h:PLAYER_SIZE, speed:5, dir:"stand", has:null };
 let presents = [];
 let houses = [];
 let score2 = 0;
 const keys = {};
-player.w = player.h = 90;
-PRESENT_SIZE = 80;
-HOUSE_SIZE = 130;
-
 
 function initGame2() {
   score2 = 0;
@@ -146,57 +121,14 @@ function initGame2() {
     {x:350,y:350,type:"error"}
   ];
 }
-houses.forEach(h => {
-  if (!player.has) return;
 
-  const near =
-    player.x < h.x + HOUSE_SIZE &&
-    player.x + player.w > h.x &&
-    player.y < h.y + HOUSE_SIZE &&
-    player.y + player.h > h.y;
-
-  if (!near) return;
-
-  if (h.type === "normal" && h.color === player.has) {
-    player.has = null;
-    score2++;
-  }
-});
-if (distance(player, p) < 300) drawPresent();
-let nearHome = false;
-
-houses.forEach(h => {
-  if (h.type !== "error") return;
-
-  const d = Math.hypot(player.x - h.x, player.y - h.y);
-
-  if (d < 200) {
-    nearHome = true;
-  }
-
-  if (d < 80) {
-    globalState = "end";
-  }
-});
-
-if (nearHome) {
-  ctx.fillStyle = "rgba(0,0,0,0.7)";
-  ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
-
-  ctx.fillStyle = "white";
-  ctx.font = "28px Arial";
-  ctx.fillText(
-    "Ты почти дома... но возвращаться нельзя.",
-    50,
-    canvas.height - 40
-  );
-}
-
-/* ============ INPUT ============ */
+/* ===== INPUT ===== */
 window.addEventListener("keydown", e => keys[e.key] = true);
 window.addEventListener("keyup", e => keys[e.key] = false);
 
 canvas.addEventListener("pointerdown", e => {
+  if (!musicStarted) musicStarted = true;
+
   const r = canvas.getBoundingClientRect();
   const mx = e.clientX - r.left;
   const my = e.clientY - r.top;
@@ -204,6 +136,8 @@ canvas.addEventListener("pointerdown", e => {
   if (globalState === "menu") {
     if (mx > btnGame1.x && mx < btnGame1.x + btnGame1.w &&
         my > btnGame1.y && my < btnGame1.y + btnGame1.h) {
+      snowflakes = [];
+      score1 = 0; lives1 = 3;
       globalState = "game1";
     }
     if (mx > btnGame2.x && mx < btnGame2.x + btnGame2.w &&
@@ -214,79 +148,121 @@ canvas.addEventListener("pointerdown", e => {
   }
 });
 
-/* ============ LOOP ============ */
+/* ===== LOOP ===== */
 function loop() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  // В меню
-if (globalState === "menu") {
-  playMusic(menuMusic);
-}
 
-// В игре 1
-if (globalState === "game1") {
-  playMusic(game1Music);
-}
-
-// В игре 2
-if (globalState === "game2") {
-  playMusic(game2Music);
-}
-
-
+  // Загрузка
   if (loaded < imageNames.length) {
     ctx.fillStyle = "white";
     ctx.font = "30px Arial";
     ctx.fillText("Загрузка...", canvas.width/2-80, canvas.height/2);
-    return requestAnimationFrame(loop);
+    requestAnimationFrame(loop);
+    return;
   }
 
+  // МУЗЫКА
+  if (globalState === "menu") playMusic(menuMusic);
+  if (globalState === "game1") playMusic(game1Music);
+  if (globalState === "game2") playMusic(game2Music);
+
+  /* ===== MENU ===== */
   if (globalState === "menu") {
     ctx.drawImage(images.background_menu,0,0,canvas.width,canvas.height);
     ctx.drawImage(images.collector, btnGame1.x, btnGame1.y, btnGame1.w, btnGame1.h);
     ctx.drawImage(images.deliver, btnGame2.x, btnGame2.y, btnGame2.w, btnGame2.h);
   }
 
+  /* ===== GAME 1 ===== */
   if (globalState === "game1") {
     ctx.drawImage(images.background_game1,0,0,canvas.width,canvas.height);
     if (Math.random() < 0.03) spawnSnow();
-    snowflakes.forEach(s => { s.update(); s.draw(); });
+    snowflakes.forEach((s,i) => { 
+      s.update(); 
+      s.draw(); 
+      if (s.y>canvas.height) snowflakes.splice(i,1);
+    });
+
+    ctx.fillStyle = "white";
+    ctx.font = "24px Arial";
+    ctx.fillText("Очки: "+score1,20,40);
+    ctx.fillText("Жизни: "+lives1,20,70);
   }
 
+  /* ===== GAME 2 ===== */
   if (globalState === "game2") {
     ctx.drawImage(images.background_game2,0,0,canvas.width,canvas.height);
 
-    if (keys.a||keys.ArrowLeft){player.x-=player.speed;player.dir="go_left"}
-    else if (keys.d||keys.ArrowRight){player.x+=player.speed;player.dir="go_right"}
-    else if (keys.w||keys.ArrowUp){player.y-=player.speed;player.dir="go_up"}
-    else if (keys.s||keys.ArrowDown){player.y+=player.speed;player.dir="go_down"}
+    // движение игрока
+    if (keys.a||keys.ArrowLeft){player.x-=player.speed;player.dir="go_left";}
+    else if (keys.d||keys.ArrowRight){player.x+=player.speed;player.dir="go_right";}
+    else if (keys.w||keys.ArrowUp){player.y-=player.speed;player.dir="go_up";}
+    else if (keys.s||keys.ArrowDown){player.y+=player.speed;player.dir="go_down";}
     else player.dir="stand";
 
+    // подбор подарков
     presents.forEach((p,i)=>{
-      ctx.drawImage(images["present_"+p.color],p.x,p.y,50,50);
+      ctx.drawImage(images["present_"+p.color], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE);
       if (!player.has &&
-          player.x<p.x+50 && player.x+player.w>p.x &&
-          player.y<p.y+50 && player.y+player.h>p.y) {
+          player.x<p.x+PRESENT_SIZE && player.x+player.w>p.x &&
+          player.y<p.y+PRESENT_SIZE && player.y+player.h>p.y) {
         player.has = p.color;
         presents.splice(i,1);
       }
     });
 
+    // дома
     houses.forEach(h=>{
-      ctx.drawImage(
-        h.type==="normal"?images["house_"+h.color]:images.error_house,
-        h.x,h.y,70,70
-      );
+      ctx.drawImage(h.type==="normal"?images["house_"+h.color]:images.error_house,
+                    h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
     });
 
-    ctx.drawImage(images["player_"+player.dir],player.x,player.y,60,60);
+    // автоматическая доставка подарка
+    if (player.has) {
+      houses.forEach(h=>{
+        if (h.type==="normal" && h.color===player.has) {
+          const d = Math.hypot(player.x - h.x, player.y - h.y);
+          if (d < 100) { player.has=null; score2++; }
+        }
+      });
+    }
+
+    // проверка error_house
+    let nearHome = false;
+    houses.forEach(h=>{
+      if (h.type!=="error") return;
+      const d = Math.hypot(player.x - h.x, player.y - h.y);
+      if (d<200) nearHome = true;
+      if (d<80) globalState="end";
+    });
+    if (nearHome) {
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
+      ctx.fillRect(0, canvas.height-100, canvas.width, 100);
+      ctx.fillStyle = "white";
+      ctx.font = "28px Arial";
+      ctx.fillText("Ты почти дома... но возвращаться нельзя.",50,canvas.height-40);
+    }
+
+    // рисуем игрока
+    ctx.drawImage(images["player_"+player.dir], player.x, player.y, PLAYER_SIZE, PLAYER_SIZE);
+
     ctx.fillStyle="white";
+    ctx.font="24px Arial";
     ctx.fillText("Очки: "+score2,20,40);
+  }
+
+  /* ===== END ===== */
+  if (globalState==="end") {
+    ctx.fillStyle="black";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="white";
+    ctx.font="48px Arial";
+    ctx.fillText("Ты вернулся домой!", canvas.width/2-200, canvas.height/2);
+    ctx.fillText("Очки: "+score2, canvas.width/2-100, canvas.height/2+60);
   }
 
   requestAnimationFrame(loop);
 }
 
 requestAnimationFrame(loop);
-
-
 
