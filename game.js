@@ -126,6 +126,10 @@ let presents = [];
 let houses = [];
 let score2 = 0;
 const keys = {};
+player.w = player.h = 90;
+PRESENT_SIZE = 80;
+HOUSE_SIZE = 130;
+
 
 function initGame2() {
   score2 = 0;
@@ -141,6 +145,51 @@ function initGame2() {
     {x:700,y:50,color:"blue",type:"normal"},
     {x:350,y:350,type:"error"}
   ];
+}
+houses.forEach(h => {
+  if (!player.has) return;
+
+  const near =
+    player.x < h.x + HOUSE_SIZE &&
+    player.x + player.w > h.x &&
+    player.y < h.y + HOUSE_SIZE &&
+    player.y + player.h > h.y;
+
+  if (!near) return;
+
+  if (h.type === "normal" && h.color === player.has) {
+    player.has = null;
+    score2++;
+  }
+});
+if (distance(player, p) < 300) drawPresent();
+let nearHome = false;
+
+houses.forEach(h => {
+  if (h.type !== "error") return;
+
+  const d = Math.hypot(player.x - h.x, player.y - h.y);
+
+  if (d < 200) {
+    nearHome = true;
+  }
+
+  if (d < 80) {
+    globalState = "end";
+  }
+});
+
+if (nearHome) {
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+
+  ctx.fillStyle = "white";
+  ctx.font = "28px Arial";
+  ctx.fillText(
+    "Ты почти дома... но возвращаться нельзя.",
+    50,
+    canvas.height - 40
+  );
 }
 
 /* ============ INPUT ============ */
@@ -238,5 +287,6 @@ if (globalState === "game2") {
 }
 
 requestAnimationFrame(loop);
+
 
 
