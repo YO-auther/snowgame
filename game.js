@@ -23,7 +23,7 @@ function playMusic(music){
 }
 
 /* ===== STATE ===== */
-let globalState="menu";
+let globalState="menu"; // menu, game1, game2
 const images = {};
 const imageNames=[
     "background_menu","collector","deliver",
@@ -94,10 +94,12 @@ let player={x:200,y:200,w:90,h:90,dir:"stand",speed:6};
 let presents=[],houses=[],score2=0;
 const keys={};
 const PRESENT_SIZE=80,HOUSE_SIZE=130;
+let holding=null; // текущий поднимаемый подарок
 
 function initGame2(){
     score2=0;
     player.x=200; player.y=200;
+    holding=null;
     presents=[
         {x:200,y:300,color:"red"},
         {x:600,y:250,color:"green"},
@@ -124,6 +126,7 @@ canvas.addEventListener("pointerdown", e=>{
 
     if(!musicStarted) musicStarted=true;
 
+    // MENU
     if(globalState==="menu"){
         if(mx>btnGame1.x && mx<btnGame1.x+btnGame1.w &&
            my>btnGame1.y && my<btnGame1.y+btnGame1.h) startGame1();
@@ -131,6 +134,7 @@ canvas.addEventListener("pointerdown", e=>{
            my>btnGame2.y && my<btnGame2.y+btnGame2.h) initGame2();
     }
 
+    // GAME1
     if(globalState==="game1"){
         snowflakes.forEach((s,i)=>{
             const dx=mx-(s.x+s.size/2);
@@ -143,6 +147,30 @@ canvas.addEventListener("pointerdown", e=>{
                 snowflakes.splice(i,1);
             }
         });
+    }
+
+    // GAME2: pick up present
+    if(globalState==="game2" && !holding){
+        presents.forEach(p=>{
+            if(mx>p.x && mx<p.x+PRESENT_SIZE && my>p.y && my<p.y+PRESENT_SIZE){
+                holding=p;
+            }
+        });
+    }
+});
+
+canvas.addEventListener("pointerup", e=>{
+    if(globalState==="game2" && holding){
+        // проверка домов
+        houses.forEach(h=>{
+            const near=holding.x+PRESENT_SIZE>h.x && holding.x<h.x+HOUSE_SIZE &&
+                       holding.y+PRESENT_SIZE>h.y && holding.y<h.y+HOUSE_SIZE;
+            if(near){
+                if(h.type==="normal" && h.color===holding.color) score2++;
+                holding=null;
+            }
+        });
+        holding=null; // если не попал в дом, отпускаем подарок
     }
 });
 
@@ -158,7 +186,6 @@ function loop(){
         return;
     }
 
-    // музыка
     if(globalState==="menu") playMusic(menuMusic);
     else if(globalState==="game1") playMusic(game1Music);
     else if(globalState==="game2") playMusic(game2Music);
@@ -175,7 +202,7 @@ function loop(){
         ctx.drawImage(images.background_game1,0,0,canvas.width,canvas.height);
         if(Math.random()<0.03) spawnSnow();
         snowflakes.forEach((s,i)=>{ s.update(); s.draw(); if(s.y>canvas.height) snowflakes.splice(i,1); });
-        effects.forEach((e,i)=>{ e.draw(); if(e.life<=0) effects.splice(i,1); });
+        effects.forEach((e,i)=>{ e.draw(); e.life<=0 ? effects.splice(i,1) : e.draw(); });
 
         ctx.fillStyle="#45bbff";
         ctx.font="24px Arial";
@@ -195,31 +222,22 @@ function loop(){
         else if(keys.s||keys.ArrowDown) player.y+=player.speed, player.dir="go_down";
         else player.dir="stand";
 
-        // перемещение подарков игроком
-        presents.forEach(p=>{
-            const dx=player.x+player.w/2-PRESENT_SIZE/2-p.x;
-            const dy=player.y+player.h/2-PRESENT_SIZE/2-p.y;
-            if(Math.abs(dx)<player.w && Math.abs(dy)<player.h) { p.x=player.x+player.w/2-PRESENT_SIZE/2; p.y=player.y+player.h/2-PRESENT_SIZE/2; }
-        });
-
-        // проверка домов
-        presents=presents.filter(p=>{
-            let delivered=false;
-            houses.forEach(h=>{
-                const near=p.x+PRESENT_SIZE>h.x && p.x<h.x+HOUSE_SIZE && p.y+PRESENT_SIZE>h.y && p.y<h.y+HOUSE_SIZE;
-                if(near){
-                    if(h.type==="normal" && h.color===p.color) { score2++; delivered=true; }
-                    else if(h.type==="error") delivered=true;
-                }
-            });
-            return !delivered;
-        });
+        // перемещаем поднимаемый подарок вместе с игроком
+        if(holding){
+            holding.x = player.x + player.w/2 - PRESENT_SIZE/2;
+            holding.y = player.y + player.h/2 - PRESENT_SIZE/2;
+        }
 
         houses.forEach(h=>{
             ctx.drawImage(h.type==="normal"?images["house_"+h.color]:images.error_house,h.x,h.y,HOUSE_SIZE,HOUSE_SIZE);
         });
 
-        presents.forEach(p=> ctx.drawImage(images["present_"+p.color],p.x,p.y,PRESENT_SIZE,PRESENT_SIZE));
+        presents.forEach(p=>{
+            if(p!==holding) ctx.drawImage(images["present_"+p.color],p.x,p.y,PRESENT_SIZE,PRESENT_SIZE);
+        });
+
+        if(holding) ctx.drawImage(images["present_"+holding.color],holding.x,holding.y,PRESENT_SIZE,PRESENT_SIZE);
+
         ctx.drawImage(images["player_"+player.dir],player.x,player.y,player.w,player.h);
 
         ctx.fillStyle="#45bbff";
