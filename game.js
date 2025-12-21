@@ -51,7 +51,7 @@ const btnGame2 = { w: 300, h: 150, get x() { return canvas.width/2 + 40; }, get 
 let score1 = 0, lives1 = 3;
 let snowflakes = [];
 let effects = [];
-const HITBOX = 150;
+const HITBOX = 100;
 const GAME_TIME = 60;
 let timeLeft = GAME_TIME;
 let timer1 = 0;
@@ -85,6 +85,7 @@ function startGame1() {
     score1=0; lives1=3; timeLeft=GAME_TIME; snowflakes=[]; effects=[];
     clearInterval(timer1);
     timer1 = setInterval(()=>{ timeLeft--; if(timeLeft<=0) endGame1(); },1000);
+    globalState="game1";
     playMusic(game1Music);
 }
 
@@ -94,14 +95,14 @@ function endGame1() {
 }
 
 /* ===== GAME 2 (ДОСТАВКА ПОДАРКОВ) ===== */
-let player = {x:200,y:200,w:90,h:90,dir:"stand",has:null,speed:6};
+let player = {x:200,y:200,w:90,h:90,dir:"stand",speed:6};
 let presents=[], houses=[], score2=0;
 const keys={};
 const PRESENT_SIZE=80, HOUSE_SIZE=130;
 
 function initGame2() {
     score2=0;
-    player.x=200; player.y=200; player.has=null;
+    player.x=200; player.y=200;
     presents=[
         {x:200,y:300,color:"red"},
         {x:600,y:250,color:"green"},
@@ -134,7 +135,7 @@ canvas.addEventListener("pointerdown", e=>{
            my>btnGame2.y && my<btnGame2.y+btnGame2.h) { initGame2(); globalState="game2"; }
     }
 
-    // обработка клика по снежинкам
+    // клик по снежинкам
     if(globalState==="game1") {
         snowflakes.forEach((s,i)=>{
             const cx=s.x+s.size/2, cy=s.y+s.size/2;
@@ -148,27 +149,6 @@ canvas.addEventListener("pointerdown", e=>{
             }
         });
         if(lives1<=0) endGame1();
-    }
-});
-
-/* ===== POINTER UP для доставки подарков ===== */
-canvas.addEventListener("pointerup", e=>{
-    if(globalState==="game2" && player.has){
-        // проверка домов
-        let delivered=false;
-        houses.forEach(h=>{
-            const near = player.x+player.w>h.x && player.x<h.x+HOUSE_SIZE &&
-                         player.y+player.h>h.y && player.y<h.y+HOUSE_SIZE;
-            if(near){
-                if(h.type==="normal" && h.color===player.has){
-                    player.has=null;
-                    score2++;
-                    delivered=true;
-                }
-                else if(h.type==="error") globalState="menu";
-            }
-        });
-        if(!delivered) {} // можно добавить звук ошибки
     }
 });
 
@@ -201,7 +181,7 @@ function loop(){
         ctx.drawImage(images.background_game1,0,0,canvas.width,canvas.height);
         if(Math.random()<0.03) spawnSnow();
         snowflakes.forEach((s,i)=>{ s.update(); s.draw(); if(s.y>canvas.height) snowflakes.splice(i,1); });
-        effects.forEach((e,i)=>{ e.draw(); e.life--; if(e.life<=0) effects.splice(i,1); });
+        effects.forEach((e,i)=>{ e.draw(); e.life--; if(e.life<=0) effects.splice(i,1); e.draw(); });
 
         ctx.fillStyle="#45bbff";
         ctx.font="24px Arial";
@@ -221,37 +201,34 @@ function loop(){
         else if(keys.s||keys.ArrowDown){player.y+=player.speed;player.dir="go_down";}
         else player.dir="stand";
 
-        // подбор подарка
-        presents.forEach((p,i)=>{
-            if(!player.has &&
-               player.x+player.w>p.x && player.x<p.x+PRESENT_SIZE &&
-               player.y+player.h>p.y && player.y<p.y+PRESENT_SIZE){
-                player.has=p.color;
-                presents.splice(i,1);
+        // движение подарков игроком (игрок "таскает" подарок)
+        presents.forEach(p=>{
+            const px = player.x+player.w/2-PRESENT_SIZE/2;
+            const py = player.y+player.h/2-PRESENT_SIZE/2;
+            const dx = player.x - p.x;
+            const dy = player.y - p.y;
+            if(Math.abs(dx)<player.w && Math.abs(dy)<player.h) {
+                p.x=px; p.y=py;
             }
+        });
+
+        // проверка дома для подарка
+        presents = presents.filter(p=>{
+            let delivered=false;
+            houses.forEach(h=>{
+                const near = p.x+PRESENT_SIZE>h.x && p.x<h.x+HOUSE_SIZE &&
+                             p.y+PRESENT_SIZE>h.y && p.y<h.y+HOUSE_SIZE;
+                if(near){
+                    if(h.type==="normal" && h.color===p.color){ score2++; delivered=true; }
+                    else if(h.type==="error") delivered=true; // пропал и закончить
+                }
+            });
+            return !delivered;
         });
 
         // рисуем дома
         houses.forEach(h=>{
-            ctx.drawImage(
-                h.type==="normal"?images["house_"+h.color]:images.error_house,
-                h.x,h.y,HOUSE_SIZE,HOUSE_SIZE
-            );
-        });
-
-        // надпись при приближении к error_house
-        houses.forEach(h=>{
-            if(h.type==="error"){
-                const d = Math.hypot(player.x-h.x, player.y-h.y);
-                if(d<200){
-                    ctx.fillStyle="rgba(0,0,0,0.7)";
-                    ctx.fillRect(0,canvas.height-80,canvas.width,80);
-                    ctx.fillStyle="#45bbff";
-                    ctx.font="28px Arial";
-                    ctx.fillText("Ты почти дома... возвращаться нельзя!",50,canvas.height-30);
-                }
-                if(d<80) globalState="menu";
-            }
+            ctx.drawImage(h.type==="normal"?images["house_"+h.color]:images.error_house,h.x,h.y,HOUSE_SIZE,HOUSE_SIZE);
         });
 
         // рисуем подарки
@@ -260,6 +237,7 @@ function loop(){
         // игрок
         ctx.drawImage(images["player_"+player.dir],player.x,player.y,player.w,player.h);
 
+        // текст
         ctx.fillStyle="#45bbff";
         ctx.font="24px Arial";
         ctx.fillText("Очки: "+score2,20,40);
