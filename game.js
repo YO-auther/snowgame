@@ -166,7 +166,7 @@ function initGame2() {
         { x: 100, y: 100, color: "red", type: "normal" },
         { x: 400, y: 100, color: "green", type: "normal" },
         { x: 700, y: 100, color: "blue", type: "normal" },
-        { x: 350, y: 500, type: "error" }
+        { x: 350, y: 500, type: "error" } // дом игрока
     ];
 }
 
@@ -183,6 +183,7 @@ function movePlayer() {
 
 function handlePresents() {
     presents.forEach(p => {
+        // столкновение игрока с подарком (толкание)
         if (
             player.x < p.x + PRESENT_SIZE &&
             player.x + player.w > p.x &&
@@ -195,6 +196,7 @@ function handlePresents() {
             if (player.dir === "go_down")  p.y += player.speed;
         }
 
+        // границы экрана
         p.x = Math.max(0, Math.min(canvas.width - PRESENT_SIZE, p.x));
         p.y = Math.max(0, Math.min(canvas.height - PRESENT_SIZE, p.y));
     });
@@ -215,6 +217,21 @@ function handlePresents() {
             }
         });
     }
+}
+
+function checkPlayerHome() {
+    houses.forEach(h => {
+        if (h.type === "error") {
+            if (
+                player.x < h.x + HOUSE_SIZE &&
+                player.x + player.w > h.x &&
+                player.y < h.y + HOUSE_SIZE &&
+                player.y + player.h > h.y
+            ) {
+                globalState = "menu"; // игрок вернулся в меню
+            }
+        }
+    });
 }
 
 /* ===== DRAW ===== */
@@ -242,8 +259,10 @@ function draw() {
     if (globalState === "game2") {
         playMusic(game2Music);
         ctx.drawImage(images.background_game2, 0, 0, canvas.width, canvas.height);
+
         movePlayer();
         handlePresents();
+        checkPlayerHome(); // проверка столкновения с error_house
 
         presents.forEach(p => ctx.drawImage(images["present_" + p.color], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
         houses.forEach(h => {
