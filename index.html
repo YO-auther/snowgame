@@ -248,7 +248,9 @@ function movePlayer(dt) {
 }
 
 function handlePresents(dt) {
-    presents.forEach(p => {
+    // Двигаем подарки вместе с игроком
+    for(let i = 0; i < presents.length; i++){
+        const p = presents[i];
         if (
             player.x < p.x + PRESENT_SIZE &&
             player.x + player.w > p.x &&
@@ -259,31 +261,36 @@ function handlePresents(dt) {
             if (player.dir === "go_right") p.x += player.speed*dt;
             if (player.dir === "go_up")    p.y -= player.speed*dt;
             if (player.dir === "go_down")  p.y += player.speed*dt;
-        }
-        p.x = Math.max(0, Math.min(canvas.width - PRESENT_SIZE, p.x));
-        p.y = Math.max(0, Math.min(canvas.height - PRESENT_SIZE, p.y));
-    });
 
-    for (let i = presents.length-1; i>=0; i--) {
+            p.x = Math.max(0, Math.min(canvas.width - PRESENT_SIZE, p.x));
+            p.y = Math.max(0, Math.min(canvas.height - PRESENT_SIZE, p.y));
+        }
+    }
+
+    // Проверка попадания подарков в дома
+    for (let i = presents.length-1; i >= 0; i--) {
         const p = presents[i];
-        houses.forEach(h => {
-            if(h.type!=="normal") return;
+        for(let j = 0; j < houses.length; j++){
+            const h = houses[j];
+            if(h.type !== "normal") continue;
             if(
                 p.x < h.x + HOUSE_SIZE &&
                 p.x + PRESENT_SIZE > h.x &&
                 p.y < h.y + HOUSE_SIZE &&
                 p.y + PRESENT_SIZE > h.y
-            ) {
+            ){
                 if(p.color === h.color){
                     score2 += 1 + combo;
                     combo++;
                     effects2.push(new Effect2(p.x + PRESENT_SIZE/2, p.y + PRESENT_SIZE/2));
                     presents.splice(i,1);
-                } else combo=0;
+                    break; // подарок удален, выходим из цикла по домам
+                } else combo = 0;
             }
-        });
+        }
     }
 
+    // Спавн новых подарков
     if(presents.length<10 && Math.random() < dt*0.6){ 
         const colors = ["red","green","blue"];
         presents.push({
@@ -293,6 +300,7 @@ function handlePresents(dt) {
         });
     }
 
+    // Двигаем дома слегка
     houses.forEach(h => {
         if(h.type==="normal"){
             h.x += (Math.random()-0.5)*50*dt;
