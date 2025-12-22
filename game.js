@@ -28,15 +28,14 @@ function playMusic(music) {
 }
 
 /* ===== STATE ===== */
-let globalState = "menu"; // menu, game1, game2
+let globalState = "menu";
 
 /* ===== IMAGES ===== */
 const images = {};
 const imageNames = [
-    "background_menu",
-    "background_game1",
-    "background_game2",
-    "snow", "gold_snow", "dead_snow",
+    "background_menu","background_game1","background_game2",
+    "collector","deliver",
+    "snow","gold_snow","dead_snow",
     "player_stand","player_go_left","player_go_right","player_go_up","player_go_down",
     "house_red","house_green","house_blue","error_house",
     "present_red","present_green","present_blue",
@@ -88,11 +87,9 @@ canvas.addEventListener("pointerdown", e => {
     if (globalState === "game1") handleSnowClick(mx, my);
 });
 
-/* ===== GAME 1 (SNOW) ===== */
-let snowflakes = [];
-let effects = [];
-let score1 = 0;
-let lives1 = 3;
+/* ===== GAME 1 ===== */
+let snowflakes = [], effects = [];
+let score1 = 0, lives1 = 3;
 
 class Snow {
     constructor(type) {
@@ -114,10 +111,8 @@ class Effect {
 
 function spawnSnow() {
     let r = Math.random();
-    let type = "snow";
-    if (r > 0.9) type = "gold_snow";
-    else if (r < 0.15) type = "dead_snow";
-    snowflakes.push(new Snow(type));
+    let t = r > 0.9 ? "gold_snow" : r < 0.15 ? "dead_snow" : "snow";
+    snowflakes.push(new Snow(t));
 }
 
 function initGame1() {
@@ -130,11 +125,9 @@ function initGame1() {
 function handleSnowClick(mx, my) {
     for (let i = snowflakes.length - 1; i >= 0; i--) {
         const s = snowflakes[i];
-        const cx = s.x + s.size / 2;
-        const cy = s.y + s.size / 2;
-        const dx = mx - cx;
-        const dy = my - cy;
-        if (Math.sqrt(dx * dx + dy * dy) < 80) {
+        const dx = mx - (s.x + s.size / 2);
+        const dy = my - (s.y + s.size / 2);
+        if (Math.hypot(dx, dy) < 80) {
             effects.push(new Effect(mx, my));
             if (s.type === "snow") score1++;
             if (s.type === "gold_snow") score1 += 5;
@@ -145,15 +138,13 @@ function handleSnowClick(mx, my) {
     if (lives1 <= 0) globalState = "menu";
 }
 
-/* ===== GAME 2 (DELIVERY) ===== */
+/* ===== GAME 2 ===== */
 const PRESENT_SIZE = 80;
 const HOUSE_SIZE = 130;
 
 let player = {
-    x: 200, y: 200, w: 90, h: 90,
-    speed: 4,
-    dir: "stand",
-    has: null
+    x: 200, y: 300, w: 90, h: 90,
+    speed: 4, dir: "stand"
 };
 
 let presents = [];
@@ -164,7 +155,6 @@ function initGame2() {
     score2 = 0;
     player.x = 200;
     player.y = 300;
-    player.has = null;
 
     presents = [
         { x: 100, y: 400, color: "red" },
@@ -173,16 +163,14 @@ function initGame2() {
     ];
 
     houses = [
-        { x: 100, y: 100, color: "red" },
-        { x: 400, y: 100, color: "green" },
-        { x: 700, y: 100, color: "blue" },
+        { x: 100, y: 100, color: "red", type: "normal" },
+        { x: 400, y: 100, color: "green", type: "normal" },
+        { x: 700, y: 100, color: "blue", type: "normal" },
         { x: 350, y: 500, type: "error" }
     ];
 }
 
 function movePlayer() {
-    if (globalState !== "game2") return;
-
     if (keys.a || keys.ArrowLeft) { player.x -= player.speed; player.dir = "go_left"; }
     else if (keys.d || keys.ArrowRight) { player.x += player.speed; player.dir = "go_right"; }
     else if (keys.w || keys.ArrowUp) { player.y -= player.speed; player.dir = "go_up"; }
@@ -194,27 +182,39 @@ function movePlayer() {
 }
 
 function handlePresents() {
-    presents.forEach((p, i) => {
-        if (!player.has &&
+    presents.forEach(p => {
+        if (
             player.x < p.x + PRESENT_SIZE &&
             player.x + player.w > p.x &&
             player.y < p.y + PRESENT_SIZE &&
-            player.y + player.h > p.y) {
-            player.has = p.color;
-            presents.splice(i, 1);
+            player.y + player.h > p.y
+        ) {
+            if (player.dir === "go_left")  p.x -= player.speed;
+            if (player.dir === "go_right") p.x += player.speed;
+            if (player.dir === "go_up")    p.y -= player.speed;
+            if (player.dir === "go_down")  p.y += player.speed;
         }
+
+        p.x = Math.max(0, Math.min(canvas.width - PRESENT_SIZE, p.x));
+        p.y = Math.max(0, Math.min(canvas.height - PRESENT_SIZE, p.y));
     });
 
-    houses.forEach(h => {
-        if (player.has &&
-            player.x < h.x + HOUSE_SIZE &&
-            player.x + player.w > h.x &&
-            player.y < h.y + HOUSE_SIZE &&
-            player.y + player.h > h.y) {
-            if (h.color === player.has) score2++;
-            player.has = null;
-        }
-    });
+    for (let i = presents.length - 1; i >= 0; i--) {
+        const p = presents[i];
+        houses.forEach(h => {
+            if (h.type !== "normal") return;
+            if (
+                p.x < h.x + HOUSE_SIZE &&
+                p.x + PRESENT_SIZE > h.x &&
+                p.y < h.y + HOUSE_SIZE &&
+                p.y + PRESENT_SIZE > h.y &&
+                p.color === h.color
+            ) {
+                score2++;
+                presents.splice(i, 1);
+            }
+        });
+    }
 }
 
 /* ===== DRAW ===== */
@@ -224,23 +224,16 @@ function draw() {
     if (globalState === "menu") {
         playMusic(menuMusic);
         ctx.drawImage(images.background_menu, 0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(btnGame1.x, btnGame1.y, btnGame1.w, btnGame1.h);
-        ctx.fillRect(btnGame2.x, btnGame2.y, btnGame2.w, btnGame2.h);
+        ctx.drawImage(images.collector, btnGame1.x, btnGame1.y, btnGame1.w, btnGame1.h);
+        ctx.drawImage(images.deliver, btnGame2.x, btnGame2.y, btnGame2.w, btnGame2.h);
     }
 
     if (globalState === "game1") {
         playMusic(game1Music);
         ctx.drawImage(images.background_game1, 0, 0, canvas.width, canvas.height);
-
         if (Math.random() < 0.02) spawnSnow();
-
         snowflakes.forEach(s => { s.update(); s.draw(); });
-        effects.forEach((e, i) => {
-            e.update(); e.draw();
-            if (e.life <= 0) effects.splice(i, 1);
-        });
-
+        effects.forEach((e, i) => { e.update(); e.draw(); if (e.life <= 0) effects.splice(i, 1); });
         ctx.fillStyle = "#fff";
         ctx.fillText(`Score: ${score1}`, 20, 40);
         ctx.fillText(`Lives: ${lives1}`, 20, 70);
@@ -249,7 +242,6 @@ function draw() {
     if (globalState === "game2") {
         playMusic(game2Music);
         ctx.drawImage(images.background_game2, 0, 0, canvas.width, canvas.height);
-
         movePlayer();
         handlePresents();
 
@@ -259,8 +251,8 @@ function draw() {
             ctx.drawImage(img, h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
         });
 
-        const pImg = images["player_" + player.dir];
-        ctx.drawImage(pImg, player.x, player.y, player.w, player.h);
+        let img = images["player_" + player.dir] || images.player_stand;
+        ctx.drawImage(img, player.x, player.y, player.w, player.h);
 
         ctx.fillStyle = "#fff";
         ctx.fillText(`Score: ${score2}`, 20, 40);
