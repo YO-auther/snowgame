@@ -141,34 +141,50 @@ function handleSnowClick(mx, my) {
     if (lives1 <= 0) globalState = "menu";
 }
 
-/* ===== GAME 2 ===== */
+/* ===== GAME 2 UPGRADE ===== */
 const PRESENT_SIZE = 80;
 const HOUSE_SIZE = 130;
-
 let player = { x: 200, y: 300, w: 90, h: 90, speed: 4, dir: "stand" };
 let presents = [];
 let houses = [];
 let score2 = 0;
+let game2Time = 60 * 60; // 60 секунд
+let combo = 0;
+let effects2 = [];
 
+/* ===== EFFECT CLASS ===== */
+class Effect2 {
+    constructor(x, y) { this.x = x; this.y = y; this.life = 20; }
+    update() { this.life--; }
+    draw() { 
+        ctx.fillStyle = `rgba(255,255,0,${this.life/20})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 20 - (20 - this.life), 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+
+/* ===== INIT GAME 2 ===== */
 function initGame2() {
     score2 = 0;
-    player.x = 200;
-    player.y = 300;
-
+    combo = 0;
+    game2Time = 60 * 60;
+    player.x = 200; player.y = 300;
     presents = [
         { x: 100, y: 400, color: "red" },
         { x: 400, y: 400, color: "green" },
         { x: 700, y: 400, color: "blue" }
     ];
-
     houses = [
         { x: 100, y: 100, color: "red", type: "normal" },
         { x: 400, y: 100, color: "green", type: "normal" },
         { x: 700, y: 100, color: "blue", type: "normal" },
         { x: 350, y: 500, type: "error" }
     ];
+    effects2 = [];
 }
 
+/* ===== MOVE PLAYER ===== */
 function movePlayer() {
     if (keys.a || keys.ArrowLeft) { player.x -= player.speed; player.dir = "go_left"; }
     else if (keys.d || keys.ArrowRight) { player.x += player.speed; player.dir = "go_right"; }
@@ -180,7 +196,9 @@ function movePlayer() {
     player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
 }
 
+/* ===== HANDLE PRESENTS ===== */
 function handlePresents() {
+    // Двигаем подарки при столкновении с игроком
     presents.forEach(p => {
         if (
             player.x < p.x + PRESENT_SIZE &&
@@ -193,40 +211,59 @@ function handlePresents() {
             if (player.dir === "go_up")    p.y -= player.speed;
             if (player.dir === "go_down")  p.y += player.speed;
         }
-
         p.x = Math.max(0, Math.min(canvas.width - PRESENT_SIZE, p.x));
         p.y = Math.max(0, Math.min(canvas.height - PRESENT_SIZE, p.y));
     });
 
+    // Проверка доставки
     for (let i = presents.length - 1; i >= 0; i--) {
         const p = presents[i];
+        let delivered = false;
         houses.forEach(h => {
             if (h.type !== "normal") return;
+            // Попадание подарка в дом
             if (
                 p.x < h.x + HOUSE_SIZE &&
                 p.x + PRESENT_SIZE > h.x &&
                 p.y < h.y + HOUSE_SIZE &&
-                p.y + PRESENT_SIZE > h.y &&
-                p.color === h.color
+                p.y + PRESENT_SIZE > h.y
             ) {
-                score2++;
-                presents.splice(i, 1);
+                if (p.color === h.color) {
+                    score2 += 1 + combo; // combo увеличивает очки
+                    combo++;
+                    effects2.push(new Effect2(p.x + PRESENT_SIZE/2, p.y + PRESENT_SIZE/2));
+                    presents.splice(i, 1);
+                    delivered = true;
+                } else {
+                    combo = 0; // ошибка сбивает combo
+                }
             }
         });
+        if (!delivered && Math.random() < 0.005) { // шанс появления нового подарка
+            const colors = ["red","green","blue"];
+            presents.push({
+                x: Math.random() * (canvas.width - PRESENT_SIZE),
+                y: Math.random() * (canvas.height - PRESENT_SIZE),
+                color: colors[Math.floor(Math.random() * colors.length)]
+            });
+        }
     }
+
+    // Двигаем дома немного
+    houses.forEach(h => {
+        if(h.type === "normal") {
+            h.x += Math.random() < 0.5 ? 0.5 : -0.5;
+            h.y += Math.random() < 0.5 ? 0.5 : -0.5;
+            h.x = Math.max(0, Math.min(canvas.width - HOUSE_SIZE, h.x));
+            h.y = Math.max(0, Math.min(canvas.height - HOUSE_SIZE, h.y));
+        }
+    });
 }
 
-/* ===== checkPlayerHome ===== */
-function checkPlayerHome() {
-    const home = houses.find(h => h.type === "error");
-    if (!home) return;
-
-    if (
-        player.x + player.w > home.x &&
-        player.x < home.x + HOUSE_SIZE &&
-        player.y + player.h > home.y &&
-        player.y < home.y + HOUSE_SIZE
-    ) {
+/* ===== UPDATE TIMER ===== */
+function updateGame2Timer() {
+    game2Time--;
+    if(game2Time <= 0) {
         lastState = "game2";
         globalState = "menu";
         musicStarted = false;
@@ -234,6 +271,16 @@ function checkPlayerHome() {
         menuMessageAlpha = 1;
     }
 }
+
+/* ===== DRAW EFFECTS ===== */
+function drawEffects2() {
+    for(let i = effects2.length-1; i>=0; i--){
+        effects2[i].update();
+        effects2[i].draw();
+        if(effects2[i].life <= 0) effects2.splice(i,1);
+    }
+}
+
 
 /* ===== DRAW ===== */
 function draw() {
@@ -294,3 +341,4 @@ function draw() {
 }
 
 draw();
+
