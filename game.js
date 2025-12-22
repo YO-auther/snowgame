@@ -142,11 +142,7 @@ function handleSnowClick(mx, my) {
 const PRESENT_SIZE = 80;
 const HOUSE_SIZE = 130;
 
-let player = {
-    x: 200, y: 300, w: 90, h: 90,
-    speed: 4, dir: "stand"
-};
-
+let player = { x: 200, y: 300, w: 90, h: 90, speed: 4, dir: "stand" };
 let presents = [];
 let houses = [];
 let score2 = 0;
@@ -183,7 +179,7 @@ function movePlayer() {
 
 function handlePresents() {
     presents.forEach(p => {
-        // столкновение игрока с подарком (толкание)
+        // толкание подарков
         if (
             player.x < p.x + PRESENT_SIZE &&
             player.x + player.w > p.x &&
@@ -196,7 +192,6 @@ function handlePresents() {
             if (player.dir === "go_down")  p.y += player.speed;
         }
 
-        // границы экрана
         p.x = Math.max(0, Math.min(canvas.width - PRESENT_SIZE, p.x));
         p.y = Math.max(0, Math.min(canvas.height - PRESENT_SIZE, p.y));
     });
@@ -220,18 +215,19 @@ function handlePresents() {
 }
 
 function checkPlayerHome() {
-    houses.forEach(h => {
-        if (h.type === "error") {
-            if (
-                player.x < h.x + HOUSE_SIZE &&
-                player.x + player.w > h.x &&
-                player.y < h.y + HOUSE_SIZE &&
-                player.y + player.h > h.y
-            ) {
-                globalState = "menu"; // игрок вернулся в меню
-            }
-        }
-    });
+    const home = houses.find(h => h.type === "error");
+    if (!home) return;
+
+    // проверка столкновения игрока с error_house
+    if (
+        player.x + player.w > home.x &&
+        player.x < home.x + HOUSE_SIZE &&
+        player.y + player.h > home.y &&
+        player.y < home.y + HOUSE_SIZE
+    ) {
+        globalState = "menu";
+        musicStarted = false;
+    }
 }
 
 /* ===== DRAW ===== */
@@ -261,20 +257,23 @@ function draw() {
         ctx.drawImage(images.background_game2, 0, 0, canvas.width, canvas.height);
 
         movePlayer();
-        handlePresents();
-        checkPlayerHome(); // проверка столкновения с error_house
+        checkPlayerHome(); // проверка сразу после движения
 
-        presents.forEach(p => ctx.drawImage(images["present_" + p.color], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
-        houses.forEach(h => {
-            const img = h.type === "error" ? images.error_house : images["house_" + h.color];
-            ctx.drawImage(img, h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
-        });
+        if (globalState === "game2") { // если игрок ещё в игре
+            handlePresents();
 
-        let img = images["player_" + player.dir] || images.player_stand;
-        ctx.drawImage(img, player.x, player.y, player.w, player.h);
+            presents.forEach(p => ctx.drawImage(images["present_" + p.color], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
+            houses.forEach(h => {
+                const img = h.type === "error" ? images.error_house : images["house_" + h.color];
+                ctx.drawImage(img, h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
+            });
 
-        ctx.fillStyle = "#fff";
-        ctx.fillText(`Score: ${score2}`, 20, 40);
+            let img = images["player_" + player.dir] || images.player_stand;
+            ctx.drawImage(img, player.x, player.y, player.w, player.h);
+
+            ctx.fillStyle = "#fff";
+            ctx.fillText(`Score: ${score2}`, 20, 40);
+        }
     }
 
     requestAnimationFrame(draw);
