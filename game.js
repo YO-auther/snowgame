@@ -44,7 +44,6 @@ const imageNames = [
     "present_red","present_green","present_blue",
     "BAM"
 ];
-
 imageNames.forEach(n => {
     const img = new Image();
     img.src = n + ".png";
@@ -113,9 +112,9 @@ class Effect {
 }
 
 function spawnSnow() {
-    let r = Math.random();
-    let t = r > 0.9 ? "gold_snow" : r < 0.15 ? "dead_snow" : "snow";
-    snowflakes.push(new Snow(t));
+    const r = Math.random();
+    const type = r > 0.9 ? "gold_snow" : r < 0.15 ? "dead_snow" : "snow";
+    snowflakes.push(new Snow(type));
 }
 
 function initGame1() {
@@ -152,7 +151,6 @@ let game2Time = 60 * 60; // 60 секунд
 let combo = 0;
 let effects2 = [];
 
-/* ===== EFFECT CLASS ===== */
 class Effect2 {
     constructor(x, y) { this.x = x; this.y = y; this.life = 20; }
     update() { this.life--; }
@@ -164,7 +162,6 @@ class Effect2 {
     }
 }
 
-/* ===== INIT GAME 2 ===== */
 function initGame2() {
     score2 = 0;
     combo = 0;
@@ -198,7 +195,6 @@ function movePlayer() {
 
 /* ===== HANDLE PRESENTS ===== */
 function handlePresents() {
-    // Двигаем подарки при столкновении с игроком
     presents.forEach(p => {
         if (
             player.x < p.x + PRESENT_SIZE &&
@@ -212,16 +208,13 @@ function handlePresents() {
             if (player.dir === "go_down")  p.y += player.speed;
         }
 
-        // Ограничение по экрану
         p.x = Math.max(0, Math.min(canvas.width - PRESENT_SIZE, p.x));
         p.y = Math.max(0, Math.min(canvas.height - PRESENT_SIZE, p.y));
     });
 
-    // Проверка доставки
     for (let i = presents.length - 1; i >= 0; i--) {
         const p = presents[i];
         let delivered = false;
-
         houses.forEach(h => {
             if (h.type !== "normal") return;
             if (
@@ -236,24 +229,21 @@ function handlePresents() {
                     effects2.push(new Effect2(p.x + PRESENT_SIZE/2, p.y + PRESENT_SIZE/2));
                     presents.splice(i, 1);
                     delivered = true;
-                } else {
-                    combo = 0;
-                }
+                } else combo = 0;
             }
         });
-
-        // Спавн нового подарка после проверки
-        if (!delivered && Math.random() < 0.005) {
-            const colors = ["red","green","blue"];
-            presents.push({
-                x: Math.random() * (canvas.width - PRESENT_SIZE),
-                y: Math.random() * (canvas.height - PRESENT_SIZE),
-                color: colors[Math.floor(Math.random() * colors.length)]
-            });
-        }
     }
 
-    // Лёгкое движение домов
+    // Спавн нового подарка с небольшой вероятностью
+    if (Math.random() < 0.01) {
+        const colors = ["red","green","blue"];
+        presents.push({
+            x: Math.random() * (canvas.width - PRESENT_SIZE),
+            y: Math.random() * (canvas.height - PRESENT_SIZE),
+            color: colors[Math.floor(Math.random() * colors.length)]
+        });
+    }
+
     houses.forEach(h => {
         if(h.type === "normal") {
             h.x += Math.random() < 0.5 ? 0.5 : -0.5;
@@ -309,10 +299,11 @@ function draw() {
     if (globalState === "game1") {
         playMusic(game1Music);
         ctx.drawImage(images.background_game1, 0, 0, canvas.width, canvas.height);
-        if (Math.random() < 0.02) spawnSnow();
+        if (Math.random() < 0.03) spawnSnow();
         snowflakes.forEach(s => { s.update(); s.draw(); });
         effects.forEach((e, i) => { e.update(); e.draw(); if (e.life <= 0) effects.splice(i, 1); });
         ctx.fillStyle = "#fff";
+        ctx.font = "30px Arial";
         ctx.fillText(`Score: ${score1}`, 20, 40);
         ctx.fillText(`Lives: ${lives1}`, 20, 70);
     }
@@ -322,37 +313,34 @@ function draw() {
         ctx.drawImage(images.background_game2, 0, 0, canvas.width, canvas.height);
 
         movePlayer();
-        checkPlayerHome();
+        handlePresents();
+        updateGame2Timer();
 
-        if (globalState === "game2") {
-            handlePresents();
-            updateGame2Timer();
+        // Отрисовка подарков
+        presents.forEach(p => ctx.drawImage(images["present_" + p.color], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
 
-            // Отрисовка подарков
-            presents.forEach(p => ctx.drawImage(images["present_" + p.color], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
+        // Двигающиеся дома
+        houses.forEach(h => {
+            const img = h.type === "error" ? images.error_house : images["house_" + h.color];
+            ctx.drawImage(img, h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
+        });
 
-            // Двигающиеся дома
-            houses.forEach(h => {
-                const img = h.type === "error" ? images.error_house : images["house_" + h.color];
-                ctx.drawImage(img, h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
-            });
+        // Игрок
+        const img = images["player_" + player.dir] || images.player_stand;
+        ctx.drawImage(img, player.x, player.y, player.w, player.h);
 
-            // Игрок
-            let img = images["player_" + player.dir] || images.player_stand;
-            ctx.drawImage(img, player.x, player.y, player.w, player.h);
+        // Эффекты combo
+        drawEffects2();
 
-            // Эффекты combo
-            drawEffects2();
-
-            // HUD
-            ctx.fillStyle = "#fff";
-            ctx.font = "30px Arial";
-            ctx.fillText(`Score: ${score2}`, 20, 40);
-            ctx.fillText(`Combo: ${combo}`, 20, 80);
-            ctx.fillText(`Time: ${Math.floor(game2Time/60)}s`, 20, 120);
-        }
+        // HUD
+        ctx.fillStyle = "#fff";
+        ctx.font = "30px Arial";
+        ctx.fillText(`Score: ${score2}`, 20, 40);
+        ctx.fillText(`Combo: ${combo}`, 20, 80);
+        ctx.fillText(`Time: ${Math.floor(game2Time/60)}s`, 20, 120);
     }
 
     requestAnimationFrame(draw);
 }
 
+draw();
