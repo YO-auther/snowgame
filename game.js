@@ -29,6 +29,9 @@ function playMusic(music) {
 
 /* ===== STATE ===== */
 let globalState = "menu";
+let lastState = null;
+let menuMessageTimer = 0;
+let menuMessageAlpha = 0;
 
 /* ===== IMAGES ===== */
 const images = {};
@@ -162,7 +165,7 @@ function initGame2() {
         { x: 100, y: 100, color: "red", type: "normal" },
         { x: 400, y: 100, color: "green", type: "normal" },
         { x: 700, y: 100, color: "blue", type: "normal" },
-        { x: 350, y: 500, type: "error" } // дом игрока
+        { x: 350, y: 500, type: "error" }
     ];
 }
 
@@ -179,7 +182,6 @@ function movePlayer() {
 
 function handlePresents() {
     presents.forEach(p => {
-        // толкание подарков
         if (
             player.x < p.x + PRESENT_SIZE &&
             player.x + player.w > p.x &&
@@ -214,19 +216,22 @@ function handlePresents() {
     }
 }
 
+/* ===== checkPlayerHome ===== */
 function checkPlayerHome() {
     const home = houses.find(h => h.type === "error");
     if (!home) return;
 
-    // проверка столкновения игрока с error_house
     if (
         player.x + player.w > home.x &&
         player.x < home.x + HOUSE_SIZE &&
         player.y + player.h > home.y &&
         player.y < home.y + HOUSE_SIZE
     ) {
+        lastState = "game2";
         globalState = "menu";
         musicStarted = false;
+        menuMessageTimer = 120;
+        menuMessageAlpha = 1;
     }
 }
 
@@ -239,6 +244,16 @@ function draw() {
         ctx.drawImage(images.background_menu, 0, 0, canvas.width, canvas.height);
         ctx.drawImage(images.collector, btnGame1.x, btnGame1.y, btnGame1.w, btnGame1.h);
         ctx.drawImage(images.deliver, btnGame2.x, btnGame2.y, btnGame2.w, btnGame2.h);
+
+        if (menuMessageTimer > 0) {
+            ctx.fillStyle = `rgba(255, 255, 0, ${menuMessageAlpha})`;
+            ctx.font = "50px Arial";
+            ctx.fillText("Возврат в меню!", canvas.width / 2 - 200, canvas.height / 2);
+            
+            menuMessageTimer--;
+            menuMessageAlpha -= 1 / 120;
+            if (menuMessageAlpha < 0) menuMessageAlpha = 0;
+        }
     }
 
     if (globalState === "game1") {
@@ -257,11 +272,10 @@ function draw() {
         ctx.drawImage(images.background_game2, 0, 0, canvas.width, canvas.height);
 
         movePlayer();
-        checkPlayerHome(); // проверка сразу после движения
+        checkPlayerHome();
 
-        if (globalState === "game2") { // если игрок ещё в игре
+        if (globalState === "game2") {
             handlePresents();
-
             presents.forEach(p => ctx.drawImage(images["present_" + p.color], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
             houses.forEach(h => {
                 const img = h.type === "error" ? images.error_house : images["house_" + h.color];
