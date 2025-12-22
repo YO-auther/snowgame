@@ -141,7 +141,7 @@ function handleSnowClick(mx, my) {
     if (lives1 <= 0) globalState = "menu";
 }
 
-/* ===== GAME 2 UPGRADE ===== */
+/* ===== GAME 2 ===== */
 const PRESENT_SIZE = 80;
 const HOUSE_SIZE = 130;
 let player = { x: 200, y: 300, w: 90, h: 90, speed: 4, dir: "stand" };
@@ -211,6 +211,8 @@ function handlePresents() {
             if (player.dir === "go_up")    p.y -= player.speed;
             if (player.dir === "go_down")  p.y += player.speed;
         }
+
+        // Ограничение по экрану
         p.x = Math.max(0, Math.min(canvas.width - PRESENT_SIZE, p.x));
         p.y = Math.max(0, Math.min(canvas.height - PRESENT_SIZE, p.y));
     });
@@ -219,9 +221,9 @@ function handlePresents() {
     for (let i = presents.length - 1; i >= 0; i--) {
         const p = presents[i];
         let delivered = false;
+
         houses.forEach(h => {
             if (h.type !== "normal") return;
-            // Попадание подарка в дом
             if (
                 p.x < h.x + HOUSE_SIZE &&
                 p.x + PRESENT_SIZE > h.x &&
@@ -229,17 +231,19 @@ function handlePresents() {
                 p.y + PRESENT_SIZE > h.y
             ) {
                 if (p.color === h.color) {
-                    score2 += 1 + combo; // combo увеличивает очки
+                    score2 += 1 + combo;
                     combo++;
                     effects2.push(new Effect2(p.x + PRESENT_SIZE/2, p.y + PRESENT_SIZE/2));
                     presents.splice(i, 1);
                     delivered = true;
                 } else {
-                    combo = 0; // ошибка сбивает combo
+                    combo = 0;
                 }
             }
         });
-        if (!delivered && Math.random() < 0.005) { // шанс появления нового подарка
+
+        // Спавн нового подарка после проверки
+        if (!delivered && Math.random() < 0.005) {
             const colors = ["red","green","blue"];
             presents.push({
                 x: Math.random() * (canvas.width - PRESENT_SIZE),
@@ -249,7 +253,7 @@ function handlePresents() {
         }
     }
 
-    // Двигаем дома немного
+    // Лёгкое движение домов
     houses.forEach(h => {
         if(h.type === "normal") {
             h.x += Math.random() < 0.5 ? 0.5 : -0.5;
@@ -280,7 +284,6 @@ function drawEffects2() {
         if(effects2[i].life <= 0) effects2.splice(i,1);
     }
 }
-
 
 /* ===== DRAW ===== */
 function draw() {
@@ -323,22 +326,33 @@ function draw() {
 
         if (globalState === "game2") {
             handlePresents();
+            updateGame2Timer();
+
+            // Отрисовка подарков
             presents.forEach(p => ctx.drawImage(images["present_" + p.color], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
+
+            // Двигающиеся дома
             houses.forEach(h => {
                 const img = h.type === "error" ? images.error_house : images["house_" + h.color];
                 ctx.drawImage(img, h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
             });
 
+            // Игрок
             let img = images["player_" + player.dir] || images.player_stand;
             ctx.drawImage(img, player.x, player.y, player.w, player.h);
 
+            // Эффекты combo
+            drawEffects2();
+
+            // HUD
             ctx.fillStyle = "#fff";
+            ctx.font = "30px Arial";
             ctx.fillText(`Score: ${score2}`, 20, 40);
+            ctx.fillText(`Combo: ${combo}`, 20, 80);
+            ctx.fillText(`Time: ${Math.floor(game2Time/60)}s`, 20, 120);
         }
     }
 
     requestAnimationFrame(draw);
 }
-
-draw();
 
