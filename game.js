@@ -9,31 +9,19 @@ function resize() {
 resize();
 window.addEventListener("resize", resize);
 
-/* ===== MUSIC ===== */
-const menuMusic = new Audio("menu.mp3");
-const game1Music = new Audio("game.mp3");
-const game2Music = new Audio("game.mp3");
-menuMusic.loop = game1Music.loop = game2Music.loop = true;
-
-let musicStarted = false;
-let currentMusic = null;
-
-function playMusic(music) {
-    if (!musicStarted) return;
-    if (currentMusic === music) return;
-    if (currentMusic) currentMusic.pause();
-    currentMusic = music;
-    currentMusic.currentTime = 0;
-    currentMusic.play().catch(() => {});
+// ===== MUSIC =====
+function loadAudio(name) {
+    const audio = new Audio(name);
+    audio.loop = true;
+    audio.onerror = () => console.error(`Не удалось загрузить ${name}`);
+    return audio;
 }
 
-/* ===== STATE ===== */
-let globalState = "menu";
-let lastState = null;
-let menuMessageTimer = 0;
-let menuMessageAlpha = 0;
+const menuMusic = loadAudio("menu.mp3");
+const game1Music = loadAudio("game.mp3");
+const game2Music = loadAudio("game.mp3");
 
-/* ===== IMAGES ===== */
+// ===== IMAGES =====
 const images = {};
 const imageNames = [
     "background_menu","background_game1","background_game2",
@@ -44,11 +32,20 @@ const imageNames = [
     "present_red","present_green","present_blue",
     "BAM"
 ];
-imageNames.forEach(n => {
+
+imageNames.forEach(name => {
     const img = new Image();
-    img.src = n + ".png";
-    images[n] = img;
+    img.src = name + ".png";
+    img.onerror = () => console.error(`Не удалось загрузить ${name}.png`);
+    images[name] = img;
 });
+
+
+/* ===== STATE ===== */
+let globalState = "menu";
+let lastState = null;
+let menuMessageTimer = 0;
+let menuMessageAlpha = 0;
 
 /* ===== BUTTONS ===== */
 const btnGame1 = { w: 300, h: 150 };
@@ -344,3 +341,4 @@ function draw() {
 }
 
 draw();
+
