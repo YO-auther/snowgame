@@ -135,6 +135,7 @@ function initGame1() {
     lastSnowTime = 0;
 }
 
+/* ======== HANDLE SNOW CLICK ======== */
 function handleSnowClick(mx, my) {
     for (let i = snowflakes.length-1; i >= 0; i--) {
         const s = snowflakes[i];
@@ -148,13 +149,16 @@ function handleSnowClick(mx, my) {
             snowflakes.splice(i,1);
         }
     }
+
     if (lives1 <= 0) {
+        if (score1 > highScores.game1) highScores.game1 = score1; // <-- обновление рекорда
         globalState = "menu";
         menuMessageTimer = 120;
         menuMessageAlpha = 1;
         musicStarted = false;
     }
 }
+
 /* ======= MOBILE CONTROL ======= */
 let touchMove = { x: 0, y: 0, active: false };
 
@@ -187,7 +191,7 @@ canvas.addEventListener("pointerdown", e => {
         return;
     }
 
-    // ===== GAME 2 (моб. управление) =====
+    // ===== GAME 2 =====
     if (globalState === "game2") {
         touchMove.active = true;
         touchMove.startX = e.clientX;
@@ -195,18 +199,16 @@ canvas.addEventListener("pointerdown", e => {
     }
 });
 
-
 canvas.addEventListener("pointermove", e => {
     if (!touchMove.active) return;
 
     const dx = e.clientX - touchMove.startX;
     const dy = e.clientY - touchMove.startY;
 
-    const max = 40; // радиус джойстика
+    const max = 40;
     touchMove.x = Math.max(-1, Math.min(1, dx / max));
     touchMove.y = Math.max(-1, Math.min(1, dy / max));
 });
-
 
 canvas.addEventListener("pointerup", () => {
     touchMove.active = false;
@@ -222,8 +224,8 @@ window.addEventListener("pointerup", () => {
 /* ======================= */
 /* ======= GAME 2 ========= */
 /* ======================= */
-    let returnedToMenu = false;
-    let errorHouseTimer = 0;
+let returnedToMenu = false;
+let errorHouseTimer = 0;
 let errorHouseActive = false;
 
 const PRESENT_SIZE = 80;
@@ -287,40 +289,38 @@ function initGame2() {
         {x:700,y:400,color:"blue"}
     ];
     houses = [
-    {x:100,y:100,color:"red",type:"normal"},
-    {x:400,y:100,color:"green",type:"normal"},
-    {x:700,y:100,color:"blue",type:"normal"}
-];
+        {x:100,y:100,color:"red",type:"normal"},
+        {x:400,y:100,color:"green",type:"normal"},
+        {x:700,y:100,color:"blue",type:"normal"}
+    ];
 
-errorHouseTimer = 8; // появится через 8 секунд
-errorHouseActive = false;
+    errorHouseTimer = 8;
+    errorHouseActive = false;
 }
+
 function updateErrorHouse(dt){
     if(errorHouseActive) return;
-
     errorHouseTimer -= dt;
     if(errorHouseTimer <= 0){
         houses.push({
-    x: Math.random() * (canvas.width - HOUSE_SIZE),
-    y: Math.random() * (canvas.height - HOUSE_SIZE),
-    type: "error"
-});
-
+            x: Math.random() * (canvas.width - HOUSE_SIZE),
+            y: Math.random() * (canvas.height - HOUSE_SIZE),
+            type: "error"
+        });
         errorHouseActive = true;
     }
 }
+
 function checkErrorHouse(){
     if (returnedToMenu) return;
-
     for (const h of houses) {
         if (h.type !== "error") continue;
-
         const dx = (player.x + player.w/2) - (h.x + HOUSE_SIZE/2);
         const dy = (player.y + player.h/2) - (h.y + HOUSE_SIZE/2);
-
         if (Math.hypot(dx, dy) < 80) {
             returnedToMenu = true;
             globalState = "menu";
+            if(score2 > highScores.game2) highScores.game2 = score2; // обновление рекорда
             lastState = "game2";
             musicStarted = false;
             menuMessageTimer = 120;
@@ -329,7 +329,6 @@ function checkErrorHouse(){
         }
     }
 }
-
 
 function movePlayer(dt) {
     let dx = 0, dy = 0;
@@ -356,11 +355,13 @@ function movePlayer(dt) {
     player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
     player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
 }
-let highScores = { game1: 0, game2: 0 }; // глобальный объект рекордов
 
+let highScores = { game1: 0, game2: 0 };
+
+/* ===== HANDLE PRESENTS ===== */
 function handlePresents(dt) {
     const toRemove = [];
-    let anyMatched = false; // для combo
+    let anyMatched = false;
 
     for (let i = 0; i < presents.length; i++) {
         const p = presents[i];
@@ -392,20 +393,20 @@ function handlePresents(dt) {
                     effects2.push(new ComboEffect(p.x + PRESENT_SIZE/2, p.y, 1 + combo));
                     toRemove.push(i);
                     anyMatched = true;
-                    break; // больше не проверяем этот подарок
+                    break;
                 }
             }
         }
     }
 
-    // Удаляем подарки после попадания
+    // Удаляем подарки
     for (let i = toRemove.length - 1; i >= 0; i--) {
         presents.splice(toRemove[i], 1);
     }
 
-    if (!anyMatched) combo = 0; // сброс combo, если никто не попал
+    if (!anyMatched) combo = 0;
 
-    // Генерация новых подарков
+    // Новые подарки
     if (presents.length < 10 && Math.random() < dt * 0.6) {
         const colors = ["red", "green", "blue"];
         let x, y;
@@ -418,7 +419,7 @@ function handlePresents(dt) {
         presents.push({ x, y, color: colors[Math.floor(Math.random() * colors.length)] });
     }
 
-    // Двигаем дома слегка
+    // Двигаем дома
     houses.forEach((h, i) => {
         if (h.type === "normal") {
             const t = Date.now() / 1000 + i;
@@ -429,7 +430,6 @@ function handlePresents(dt) {
         }
     });
 
-    // Обновляем рекорд
     if (score2 > highScores.game2) highScores.game2 = score2;
 }
 
@@ -437,14 +437,16 @@ function updateGame2Timer(dt){
     game2Time -= dt;
     if(game2Time <= 0){
         game2Time = 0;
-        lastState = "game2";
+        returnedToMenu = true;
         globalState = "menu";
+        if(score2 > highScores.game2) highScores.game2 = score2;
         musicStarted = false;
         menuMessageTimer = 120;
         menuMessageAlpha = 1;
     }
 }
 
+/* ===== DRAW EFFECTS ===== */
 function drawEffects(arr, dt){
     for(let i=arr.length-1;i>=0;i--){
         arr[i].update(dt);
@@ -469,11 +471,11 @@ function draw(time){
         ctx.drawImage(images.background_menu,0,0,canvas.width,canvas.height);
         ctx.drawImage(images.collector, btnGame1.x, btnGame1.y, btnGame1.w, btnGame1.h);
         ctx.drawImage(images.deliver, btnGame2.x, btnGame2.y, btnGame2.w, btnGame2.h);
-        ctx.fillStyle = "#fff";
-ctx.font = "30px Arial";
-ctx.fillText(`Рекорд Game1: ${highScores.game1}`, 20, canvas.height - 60);
-ctx.fillText(`Рекорд Game2: ${highScores.game2}`, 20, canvas.height - 30);
 
+        ctx.fillStyle = "#fff";
+        ctx.font = "30px Arial";
+        ctx.fillText(`Рекорд Game1: ${highScores.game1}`, 20, canvas.height - 80);
+        ctx.fillText(`Рекорд Game2: ${highScores.game2}`, 20, canvas.height - 40);
 
         if(menuMessageTimer>0){
             ctx.fillStyle = `rgba(255,255,0,${menuMessageAlpha})`;
@@ -491,54 +493,53 @@ ctx.fillText(`Рекорд Game2: ${highScores.game2}`, 20, canvas.height - 30);
         ctx.drawImage(images.background_game1,0,0,canvas.width,canvas.height);
 
         lastSnowTime += deltaTime;
-        while (lastSnowTime > 0.1) {
-    spawnSnow();
-    lastSnowTime -= 0.1;
-}
-        snowflakes.forEach(s=>{s.update(deltaTime); s.draw();});
+        if(lastSnowTime>0.35){ spawnSnow(); lastSnowTime=0; }
+
+        snowflakes.forEach(s => { s.update(deltaTime); s.draw(); });
         drawEffects(effects, deltaTime);
 
-        ctx.fillStyle="#fff";
-        ctx.font="30px Arial";
-        ctx.fillText(`Score: ${score1}`,20,40);
-        ctx.fillText(`Lives: ${lives1}`,20,70);
+        ctx.fillStyle = "#fff";
+        ctx.font = "30px Arial";
+        ctx.fillText(`Score: ${score1}`, 20, 50);
+        ctx.fillText(`Lives: ${lives1}`, 20, 90);
+        ctx.fillText(`Record: ${highScores.game1}`, 20, 130);
     }
 
     if(globalState==="game2"){
         playMusic(game2Music);
         ctx.drawImage(images.background_game2,0,0,canvas.width,canvas.height);
-        updateErrorHouse(deltaTime);
-checkErrorHouse();
-        ctx.fillText(`Record: ${highScores.game2}`, 20, 160);
-
-
 
         movePlayer(deltaTime);
+        updateErrorHouse(deltaTime);
+        checkErrorHouse();
         handlePresents(deltaTime);
         updateGame2Timer(deltaTime);
 
-        presents.forEach(p => ctx.drawImage(images["present_"+p.color], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
+        // Draw player
+        ctx.drawImage(images["player_"+player.dir], player.x, player.y, player.w, player.h);
 
-        houses.forEach(h=>{
-            const img = h.type==="error"?images.error_house:images["house_"+h.color];
-            ctx.drawImage(img,h.x,h.y,HOUSE_SIZE,HOUSE_SIZE);
+        // Draw houses
+        houses.forEach(h => {
+            if(h.type==="normal") ctx.drawImage(images[`house_${h.color}`], h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
+            else if(h.type==="error") ctx.drawImage(images.error_house, h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
         });
 
-        const img = images["player_"+player.dir]||images.player_stand;
-        ctx.drawImage(img,player.x,player.y,player.w,player.h);
+        // Draw presents
+        presents.forEach(p => ctx.drawImage(images[`present_${p.color}`], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
 
         drawEffects(effects2, deltaTime);
 
         ctx.fillStyle="#fff";
         ctx.font="30px Arial";
-        ctx.fillText(`Score: ${score2}`,20,40);
-        ctx.fillText(`Combo: ${combo}`,20,80);
-        ctx.fillText(`Time: ${Math.floor(game2Time)}s`,20,120);
+        ctx.fillText(`Score: ${score2}`, 20, 50);
+        ctx.fillText(`Time: ${Math.ceil(game2Time)}`, 20, 90);
+        ctx.fillText(`Record: ${highScores.game2}`, 20, 130);
     }
+
     requestAnimationFrame(draw);
 }
+
 requestAnimationFrame(draw);
 </script>
 </body>
 </html>
-
