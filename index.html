@@ -437,4 +437,14 @@ function draw(time){
 
         ctx.fillStyle="#fff"; ctx.font="30px Arial";
         ctx.fillText(`Score: ${score2}`,20,50);
-        ctx.fillText(`Time: ${Math.ceil(game
+        ctx.fillText(`Time: ${Math.ceil(game2Time)}`,20,90);
+        ctx.fillText(`Record: ${highScores.game2}`,20,130);
+    }
+
+    requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
