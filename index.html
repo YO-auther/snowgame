@@ -85,9 +85,10 @@ imageNames.forEach(name => {
 /* ======= STATE ========= */
 /* ======================= */
 let globalState = "menu";
-let lastState = null;
 let menuMessageTimer = 0;
 let menuMessageAlpha = 0;
+
+const highScores = { game1: 0, game2: 0 };
 
 /* ======================= */
 /* ======= INPUT ========= */
@@ -121,6 +122,15 @@ class Effect {
     draw() { ctx.drawImage(images.BAM, this.x - 25, this.y - 25, 50, 50); }
 }
 
+function drawEffects(effectsArray, dt) {
+    for (let i = effectsArray.length - 1; i >= 0; i--) {
+        const e = effectsArray[i];
+        e.update(dt);
+        e.draw();
+        if (e.life <= 0) effectsArray.splice(i, 1);
+    }
+}
+
 function spawnSnow() {
     const r = Math.random();
     const type = r > 0.9 ? "gold_snow" : r < 0.15 ? "dead_snow" : "snow";
@@ -135,7 +145,6 @@ function initGame1() {
     lastSnowTime = 0;
 }
 
-/* ======== HANDLE SNOW CLICK ======== */
 function handleSnowClick(mx, my) {
     for (let i = snowflakes.length-1; i >= 0; i--) {
         const s = snowflakes[i];
@@ -151,7 +160,7 @@ function handleSnowClick(mx, my) {
     }
 
     if (lives1 <= 0) {
-        if (score1 > highScores.game1) highScores.game1 = score1; // <-- обновление рекорда
+        if (score1 > highScores.game1) highScores.game1 = score1;
         globalState = "menu";
         menuMessageTimer = 120;
         menuMessageAlpha = 1;
@@ -159,149 +168,71 @@ function handleSnowClick(mx, my) {
     }
 }
 
-/* ======= MOBILE CONTROL ======= */
-let touchMove = { x: 0, y: 0, active: false };
-
-canvas.addEventListener("pointerdown", e => {
-    musicStarted = true;
-
-    const r = canvas.getBoundingClientRect();
-    const mx = e.clientX - r.left;
-    const my = e.clientY - r.top;
-
-    // ===== МЕНЮ =====
-    if (globalState === "menu") {
-        if (mx > btnGame1.x && mx < btnGame1.x + btnGame1.w &&
-            my > btnGame1.y && my < btnGame1.y + btnGame1.h) {
-            initGame1();
-            globalState = "game1";
-        }
-
-        if (mx > btnGame2.x && mx < btnGame2.x + btnGame2.w &&
-            my > btnGame2.y && my < btnGame2.y + btnGame2.h) {
-            initGame2();
-            globalState = "game2";
-        }
-        return;
-    }
-
-    // ===== GAME 1 =====
-    if (globalState === "game1") {
-        handleSnowClick(mx, my);
-        return;
-    }
-
-    // ===== GAME 2 =====
-    if (globalState === "game2") {
-        touchMove.active = true;
-        touchMove.startX = e.clientX;
-        touchMove.startY = e.clientY;
-    }
-});
-
-canvas.addEventListener("pointermove", e => {
-    if (!touchMove.active) return;
-
-    const dx = e.clientX - touchMove.startX;
-    const dy = e.clientY - touchMove.startY;
-
-    const max = 40;
-    touchMove.x = Math.max(-1, Math.min(1, dx / max));
-    touchMove.y = Math.max(-1, Math.min(1, dy / max));
-});
-
-canvas.addEventListener("pointerup", () => {
-    touchMove.active = false;
-    touchMove.x = 0;
-    touchMove.y = 0;
-});
-window.addEventListener("pointerup", () => {
-    touchMove.active = false;
-    touchMove.x = 0;
-    touchMove.y = 0;
-});
-
 /* ======================= */
 /* ======= GAME 2 ========= */
 /* ======================= */
 let returnedToMenu = false;
-let errorHouseTimer = 0;
+let errorHouseTimer = 8;
 let errorHouseActive = false;
 
 const PRESENT_SIZE = 80;
 const HOUSE_SIZE = 130;
-let player = { x:200, y:300, w:90, h:90, speed:300, dir:"stand" };
+
+let player = { x: 200, y: 300, w: 90, h: 90, speed: 300, dir: "stand" };
 let presents = [];
 let houses = [];
 let score2 = 0;
 let game2Time = 60;
 let combo = 0;
-let effects2 = []; 
+let effects2 = [];
 
 class Effect2 {
-    constructor(x, y) { this.x = x; this.y = y; this.life = 0.33; }
+    constructor(x, y) { this.x = x; this.y = y; this.life = 0.25; }
     update(dt) { this.life -= dt; }
-    draw() { 
-        const progress = 1 - this.life / 0.33;
-        const radius = 60 * Math.sin(progress * Math.PI);
-        const alpha = Math.max(0, this.life / 0.33);
-        const r = 255, g = Math.floor(255 - 155*progress), b = 0;
-        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, radius, 0, Math.PI*2);
-        ctx.fill();
-    }
+    draw() { ctx.drawImage(images.BAM, this.x - 25, this.y - 25, 50, 50); }
 }
 
 class ComboEffect {
-    constructor(x, y, value) {
-        this.x = x;
-        this.y = y;
-        this.value = value;
-        this.life = 1;
-    }
-    update(dt) { 
-        this.life -= dt; 
-        this.y -= 60*dt;
-    }
+    constructor(x, y, combo) { this.x = x; this.y = y; this.combo = combo; this.life = 0.5; }
+    update(dt) { this.life -= dt; }
     draw() {
-        const alpha = Math.max(0, this.life);
-        const scale = 1 + (1 - this.life) * 0.5;
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(scale, scale);
-        ctx.fillStyle = `rgba(255,255,0,${alpha})`;
-        ctx.font = "30px Arial";
-        ctx.fillText("+" + this.value, -15, 0);
-        ctx.restore();
+        ctx.fillStyle = `rgba(255,255,0,${Math.max(this.life*2,0)})`;
+        ctx.font = "20px Arial";
+        ctx.fillText(`+${this.combo}`, this.x, this.y);
     }
 }
 
 function initGame2() {
-    score2 = 0;
-    combo = 0;
-    game2Time = 60;
-    player.x = 200; player.y = 300;
+    player.x = 200; player.y = 300; player.dir = "stand";
+    score2 = 0; combo = 0; game2Time = 60;
     returnedToMenu = false;
+    errorHouseTimer = 8; errorHouseActive = false;
     presents = [
-        {x:100,y:400,color:"red"},
-        {x:400,y:400,color:"green"},
-        {x:700,y:400,color:"blue"}
+        { x: 100, y: 400, color: "red" },
+        { x: 400, y: 400, color: "green" },
+        { x: 700, y: 400, color: "blue" }
     ];
     houses = [
-        {x:100,y:100,color:"red",type:"normal"},
-        {x:400,y:100,color:"green",type:"normal"},
-        {x:700,y:100,color:"blue",type:"normal"}
+        { x: 100, y: 100, color: "red", type: "normal" },
+        { x: 400, y: 100, color: "green", type: "normal" },
+        { x: 700, y: 100, color: "blue", type: "normal" }
     ];
-
-    errorHouseTimer = 8;
-    errorHouseActive = false;
+    effects2 = [];
 }
 
-function updateErrorHouse(dt){
-    if(errorHouseActive) return;
+function endGame2() {
+    returnedToMenu = true;
+    globalState = "menu";
+    musicStarted = false;
+    menuMessageTimer = 120;
+    menuMessageAlpha = 1;
+    if (score2 > highScores.game2) highScores.game2 = score2;
+}
+
+function updateErrorHouse(dt) {
+    if (returnedToMenu || errorHouseActive) return;
     errorHouseTimer -= dt;
-    if(errorHouseTimer <= 0){
+    if (errorHouseTimer <= 0) {
         houses.push({
             x: Math.random() * (canvas.width - HOUSE_SIZE),
             y: Math.random() * (canvas.height - HOUSE_SIZE),
@@ -311,86 +242,63 @@ function updateErrorHouse(dt){
     }
 }
 
-function checkErrorHouse(){
+function checkErrorHouse() {
     if (returnedToMenu) return;
     for (const h of houses) {
         if (h.type !== "error") continue;
         const dx = (player.x + player.w/2) - (h.x + HOUSE_SIZE/2);
         const dy = (player.y + player.h/2) - (h.y + HOUSE_SIZE/2);
-        if (Math.hypot(dx, dy) < 80) {
-            returnedToMenu = true;
-            globalState = "menu";
-            if(score2 > highScores.game2) highScores.game2 = score2; // обновление рекорда
-            lastState = "game2";
-            musicStarted = false;
-            menuMessageTimer = 120;
-            menuMessageAlpha = 1;
-            break;
-        }
+        if (Math.hypot(dx, dy) < 80) endGame2();
     }
 }
 
-function movePlayer(dt) {
+function movePlayer(dt, touchMove={active:false,x:0,y:0}) {
     let dx = 0, dy = 0;
-
-    // клавиатура
     if (keys.a || keys.arrowleft) dx -= 1;
     if (keys.d || keys.arrowright) dx += 1;
     if (keys.w || keys.arrowup) dy -= 1;
     if (keys.s || keys.arrowdown) dy += 1;
 
-    // мобильное управление
-    if (touchMove.active) {
-        dx = Math.max(-1, Math.min(1, touchMove.x));
-        dy = Math.max(-1, Math.min(1, touchMove.y));
-    }
+    if (touchMove.active) { dx = touchMove.x; dy = touchMove.y; }
 
-    if (dx === 0 && dy === 0) player.dir = "stand";
-    else if (Math.abs(dx) > Math.abs(dy)) player.dir = dx > 0 ? "go_right" : "go_left";
-    else player.dir = dy > 0 ? "go_down" : "go_up";
+    if (dx===0 && dy===0) player.dir="stand";
+    else if (Math.abs(dx) > Math.abs(dy)) player.dir = dx>0 ? "go_right":"go_left";
+    else player.dir = dy>0 ? "go_down":"go_up";
 
-    player.x += dx * player.speed * dt;
-    player.y += dy * player.speed * dt;
+    player.x += dx*player.speed*dt;
+    player.y += dy*player.speed*dt;
 
-    player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
-    player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
+    player.x = Math.max(0, Math.min(canvas.width-player.w, player.x));
+    player.y = Math.max(0, Math.min(canvas.height-player.h, player.y));
 }
 
-let highScores = { game1: 0, game2: 0 };
-
-/* ===== HANDLE PRESENTS ===== */
 function handlePresents(dt) {
+    if (returnedToMenu) return;
+
     const toRemove = [];
     let anyMatched = false;
-
-    for (let i = 0; i < presents.length; i++) {
+    for (let i=0;i<presents.length;i++){
         const p = presents[i];
+        if (player.x < p.x+PRESENT_SIZE && player.x+player.w>p.x &&
+            player.y < p.y+PRESENT_SIZE && player.y+player.h>p.y){
+            if (player.dir==="go_left") p.x -= player.speed*dt;
+            if (player.dir==="go_right") p.x += player.speed*dt;
+            if (player.dir==="go_up") p.y -= player.speed*dt;
+            if (player.dir==="go_down") p.y += player.speed*dt;
 
-        // Толкание игроком
-        if (player.x < p.x + PRESENT_SIZE &&
-            player.x + player.w > p.x &&
-            player.y < p.y + PRESENT_SIZE &&
-            player.y + player.h > p.y
-        ) {
-            if (player.dir === "go_left")  p.x -= player.speed * dt;
-            if (player.dir === "go_right") p.x += player.speed * dt;
-            if (player.dir === "go_up")    p.y -= player.speed * dt;
-            if (player.dir === "go_down")  p.y += player.speed * dt;
-
-            p.x = Math.max(0, Math.min(canvas.width - PRESENT_SIZE, p.x));
-            p.y = Math.max(0, Math.min(canvas.height - PRESENT_SIZE, p.y));
+            p.x = Math.max(0, Math.min(canvas.width-PRESENT_SIZE, p.x));
+            p.y = Math.max(0, Math.min(canvas.height-PRESENT_SIZE, p.y));
         }
 
-        // Проверка попадания в дома
-        for (const h of houses) {
-            if (h.type !== "normal") continue;
-            if (p.x < h.x + HOUSE_SIZE && p.x + PRESENT_SIZE > h.x &&
-                p.y < h.y + HOUSE_SIZE && p.y + PRESENT_SIZE > h.y) {
-                if (p.color === h.color) {
-                    score2 += 1 + combo;
+        for (const h of houses){
+            if (h.type!=="normal") continue;
+            if (p.x < h.x+HOUSE_SIZE && p.x+PRESENT_SIZE>h.x &&
+                p.y < h.y+HOUSE_SIZE && p.y+PRESENT_SIZE>h.y){
+                if (p.color===h.color){
+                    score2 += 1+combo;
                     combo++;
-                    effects2.push(new Effect2(p.x + PRESENT_SIZE/2, p.y + PRESENT_SIZE/2));
-                    effects2.push(new ComboEffect(p.x + PRESENT_SIZE/2, p.y, 1 + combo));
+                    effects2.push(new Effect2(p.x+PRESENT_SIZE/2, p.y+PRESENT_SIZE/2));
+                    effects2.push(new ComboEffect(p.x+PRESENT_SIZE/2, p.y, 1+combo));
                     toRemove.push(i);
                     anyMatched = true;
                     break;
@@ -398,93 +306,95 @@ function handlePresents(dt) {
             }
         }
     }
-
-    // Удаляем подарки
-    for (let i = toRemove.length - 1; i >= 0; i--) {
-        presents.splice(toRemove[i], 1);
-    }
-
+    for (let i=toRemove.length-1;i>=0;i--) presents.splice(toRemove[i],1);
     if (!anyMatched) combo = 0;
 
-    // Новые подарки
-    if (presents.length < 10 && Math.random() < dt * 0.6) {
-        const colors = ["red", "green", "blue"];
+    // Генерация новых подарков
+    if (presents.length < 10 && Math.random() < dt*0.6){
+        const colors = ["red","green","blue"];
         let x, y;
-        do {
-            x = Math.random() * (canvas.width - PRESENT_SIZE);
-            y = Math.random() * (canvas.height - PRESENT_SIZE);
-        } while (x < player.x + player.w && x + PRESENT_SIZE > player.x &&
-                 y < player.y + player.h && y + PRESENT_SIZE > player.y);
-
-        presents.push({ x, y, color: colors[Math.floor(Math.random() * colors.length)] });
+        do { x = Math.random()*(canvas.width-PRESENT_SIZE); y = Math.random()*(canvas.height-PRESENT_SIZE); }
+        while (x < player.x+player.w && x+PRESENT_SIZE>player.x &&
+               y < player.y+player.h && y+PRESENT_SIZE>player.y);
+        presents.push({x,y,color:colors[Math.floor(Math.random()*colors.length)]});
     }
 
-    // Двигаем дома
-    houses.forEach((h, i) => {
-        if (h.type === "normal") {
-            const t = Date.now() / 1000 + i;
-            h.x += Math.sin(t) * 20 * dt;
-            h.y += Math.cos(t) * 20 * dt;
-            h.x = Math.max(0, Math.min(canvas.width - HOUSE_SIZE, h.x));
-            h.y = Math.max(0, Math.min(canvas.height - HOUSE_SIZE, h.y));
+    houses.forEach((h,i)=>{
+        if (h.type==="normal"){
+            const t = Date.now()/1000 + i;
+            h.x += Math.sin(t)*20*dt;
+            h.y += Math.cos(t)*20*dt;
+            h.x = Math.max(0, Math.min(canvas.width-HOUSE_SIZE,h.x));
+            h.y = Math.max(0, Math.min(canvas.height-HOUSE_SIZE,h.y));
         }
     });
-
-    if (score2 > highScores.game2) highScores.game2 = score2;
 }
 
 function updateGame2Timer(dt){
+    if (returnedToMenu) return;
     game2Time -= dt;
-    if(game2Time <= 0){
-        game2Time = 0;
-        returnedToMenu = true;
-        globalState = "menu";
-        if(score2 > highScores.game2) highScores.game2 = score2;
-        musicStarted = false;
-        menuMessageTimer = 120;
-        menuMessageAlpha = 1;
-    }
+    if (game2Time<=0){ game2Time=0; endGame2(); }
 }
 
-/* ===== DRAW EFFECTS ===== */
-function drawEffects(arr, dt){
-    for(let i=arr.length-1;i>=0;i--){
-        arr[i].update(dt);
-        arr[i].draw();
-        if(arr[i].life<=0) arr.splice(i,1);
+/* ======================= */
+/* ======= MOBILE CONTROL ========== */
+let touchMove = { x:0, y:0, active:false };
+
+canvas.addEventListener("pointerdown", e=>{
+    musicStarted = true;
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left;
+    const my = e.clientY - r.top;
+
+    if (globalState==="menu"){
+        if (mx>btnGame1.x && mx<btnGame1.x+btnGame1.w &&
+            my>btnGame1.y && my<btnGame1.y+btnGame1.h){ initGame1(); globalState="game1"; }
+        if (mx>btnGame2.x && mx<btnGame2.x+btnGame2.w &&
+            my>btnGame2.y && my<btnGame2.y+btnGame2.h){ initGame2(); globalState="game2"; }
+        return;
     }
-}
+
+    if (globalState==="game1"){ handleSnowClick(mx,my); return; }
+
+    if (globalState==="game2"){ touchMove.active=true; touchMove.startX=e.clientX; touchMove.startY=e.clientY; }
+});
+
+canvas.addEventListener("pointermove", e=>{
+    if (!touchMove.active) return;
+    const dx = e.clientX - touchMove.startX;
+    const dy = e.clientY - touchMove.startY;
+    const max = 40;
+    touchMove.x = Math.max(-1, Math.min(1, dx/max));
+    touchMove.y = Math.max(-1, Math.min(1, dy/max));
+});
+
+canvas.addEventListener("pointerup", ()=>{ touchMove.active=false; touchMove.x=0; touchMove.y=0; });
+window.addEventListener("pointerup", ()=>{ touchMove.active=false; touchMove.x=0; touchMove.y=0; });
 
 /* ======================= */
 /* ======= MAIN LOOP ===== */
-/* ======================= */
 let lastTime = 0;
 
 function draw(time){
-    const deltaTime = Math.min((time - lastTime)/1000, 0.05);
-    lastTime = time;
-
+    const dt = Math.min((time-lastTime)/1000,0.05);
+    lastTime=time;
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    if(globalState==="menu"){
+    if (globalState==="menu"){
         playMusic(menuMusic);
         ctx.drawImage(images.background_menu,0,0,canvas.width,canvas.height);
         ctx.drawImage(images.collector, btnGame1.x, btnGame1.y, btnGame1.w, btnGame1.h);
         ctx.drawImage(images.deliver, btnGame2.x, btnGame2.y, btnGame2.w, btnGame2.h);
 
-        ctx.fillStyle = "#fff";
-        ctx.font = "30px Arial";
-        ctx.fillText(`Рекорд Game1: ${highScores.game1}`, 20, canvas.height - 80);
-        ctx.fillText(`Рекорд Game2: ${highScores.game2}`, 20, canvas.height - 40);
+        ctx.fillStyle="#fff"; ctx.font="30px Arial";
+        ctx.fillText(`Рекорд Game1: ${highScores.game1}`,20,canvas.height-80);
+        ctx.fillText(`Рекорд Game2: ${highScores.game2}`,20,canvas.height-40);
 
         if(menuMessageTimer>0){
-            ctx.fillStyle = `rgba(255,255,0,${menuMessageAlpha})`;
-            ctx.font = "50px Arial";
+            ctx.fillStyle=`rgba(255,255,0,${menuMessageAlpha})`;
+            ctx.font="50px Arial";
             ctx.fillText("Возврат в меню!", canvas.width/2-200, canvas.height/2);
-
-            menuMessageTimer--;
-            menuMessageAlpha -= 1/120;
-            if(menuMessageAlpha<0) menuMessageAlpha=0;
+            menuMessageTimer--; menuMessageAlpha-=1/120; if(menuMessageAlpha<0) menuMessageAlpha=0;
         }
     }
 
@@ -492,54 +402,39 @@ function draw(time){
         playMusic(game1Music);
         ctx.drawImage(images.background_game1,0,0,canvas.width,canvas.height);
 
-        lastSnowTime += deltaTime;
+        lastSnowTime+=dt;
         if(lastSnowTime>0.35){ spawnSnow(); lastSnowTime=0; }
 
-        snowflakes.forEach(s => { s.update(deltaTime); s.draw(); });
-        drawEffects(effects, deltaTime);
+        snowflakes.forEach(s=>{ s.update(dt); s.draw(); });
+        drawEffects(effects, dt);
 
-        ctx.fillStyle = "#fff";
-        ctx.font = "30px Arial";
-        ctx.fillText(`Score: ${score1}`, 20, 50);
-        ctx.fillText(`Lives: ${lives1}`, 20, 90);
-        ctx.fillText(`Record: ${highScores.game1}`, 20, 130);
+        ctx.fillStyle="#fff"; ctx.font="30px Arial";
+        ctx.fillText(`Score: ${score1}`,20,50);
+        ctx.fillText(`Lives: ${lives1}`,20,90);
+        ctx.fillText(`Record: ${highScores.game1}`,20,130);
     }
 
     if(globalState==="game2"){
         playMusic(game2Music);
         ctx.drawImage(images.background_game2,0,0,canvas.width,canvas.height);
 
-        movePlayer(deltaTime);
-        updateErrorHouse(deltaTime);
+        movePlayer(dt, touchMove);
+        updateErrorHouse(dt);
         checkErrorHouse();
-        handlePresents(deltaTime);
-        updateGame2Timer(deltaTime);
+        handlePresents(dt);
+        updateGame2Timer(dt);
 
-        // Draw player
-        ctx.drawImage(images["player_"+player.dir], player.x, player.y, player.w, player.h);
+        ctx.drawImage(images["player_"+player.dir],player.x,player.y,player.w,player.h);
 
-        // Draw houses
-        houses.forEach(h => {
-            if(h.type==="normal") ctx.drawImage(images[`house_${h.color}`], h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
-            else if(h.type==="error") ctx.drawImage(images.error_house, h.x, h.y, HOUSE_SIZE, HOUSE_SIZE);
+        houses.forEach(h=>{
+            if(h.type==="normal") ctx.drawImage(images[`house_${h.color}`],h.x,h.y,HOUSE_SIZE,HOUSE_SIZE);
+            else ctx.drawImage(images.error_house,h.x,h.y,HOUSE_SIZE,HOUSE_SIZE);
         });
 
-        // Draw presents
-        presents.forEach(p => ctx.drawImage(images[`present_${p.color}`], p.x, p.y, PRESENT_SIZE, PRESENT_SIZE));
+        presents.forEach(p=>ctx.drawImage(images[`present_${p.color}`],p.x,p.y,PRESENT_SIZE,PRESENT_SIZE));
 
-        drawEffects(effects2, deltaTime);
+        drawEffects(effects2, dt);
 
-        ctx.fillStyle="#fff";
-        ctx.font="30px Arial";
-        ctx.fillText(`Score: ${score2}`, 20, 50);
-        ctx.fillText(`Time: ${Math.ceil(game2Time)}`, 20, 90);
-        ctx.fillText(`Record: ${highScores.game2}`, 20, 130);
-    }
-
-    requestAnimationFrame(draw);
-}
-
-requestAnimationFrame(draw);
-</script>
-</body>
-</html>
+        ctx.fillStyle="#fff"; ctx.font="30px Arial";
+        ctx.fillText(`Score: ${score2}`,20,50);
+        ctx.fillText(`Time: ${Math.ceil(game
