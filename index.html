@@ -252,25 +252,51 @@ function checkErrorHouse() {
     }
 }
 
-function movePlayer(dt, touchMove={active:false,x:0,y:0}) {
+function movePlayer(dt, touchMove = { active:false, x:0, y:0 }) {
     let dx = 0, dy = 0;
-    if (keys.a || keys.arrowleft) dx -= 1;
+
+    // Клавиатура
+    if (keys.a || keys.arrowleft)  dx -= 1;
     if (keys.d || keys.arrowright) dx += 1;
-    if (keys.w || keys.arrowup) dy -= 1;
-    if (keys.s || keys.arrowdown) dy += 1;
+    if (keys.w || keys.arrowup)    dy -= 1;
+    if (keys.s || keys.arrowdown)  dy += 1;
 
-    if (touchMove.active) { dx = touchMove.x; dy = touchMove.y; }
+    // Тач
+    if (touchMove.active) {
+        dx = touchMove.x;
+        dy = touchMove.y;
 
-    if (dx===0 && dy===0) player.dir="stand";
-    else if (Math.abs(dx) > Math.abs(dy)) player.dir = dx>0 ? "go_right":"go_left";
-    else player.dir = dy>0 ? "go_down":"go_up";
+        const DEAD_ZONE = 0.15;
+        const len = Math.hypot(dx, dy);
 
-    player.x += dx*player.speed*dt;
-    player.y += dy*player.speed*dt;
+        if (len < DEAD_ZONE) {
+            dx = 0;
+            dy = 0;
+        } else {
+            // нормализация — одинаковая скорость во все стороны
+            dx /= len;
+            dy /= len;
+        }
+    }
 
-    player.x = Math.max(0, Math.min(canvas.width-player.w, player.x));
-    player.y = Math.max(0, Math.min(canvas.height-player.h, player.y));
+    // Направление персонажа
+    if (dx === 0 && dy === 0) {
+        player.dir = "stand";
+    } else if (Math.abs(dx) > Math.abs(dy)) {
+        player.dir = dx > 0 ? "go_right" : "go_left";
+    } else {
+        player.dir = dy > 0 ? "go_down" : "go_up";
+    }
+
+    // Движение
+    player.x += dx * player.speed * dt;
+    player.y += dy * player.speed * dt;
+
+    // Ограничения экрана
+    player.x = Math.max(0, Math.min(canvas.width  - player.w, player.x));
+    player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
 }
+
 
 function handlePresents(dt) {
     if (returnedToMenu) return;
@@ -448,3 +474,4 @@ requestAnimationFrame(draw);
 </script>
 </body>
 </html>
+
